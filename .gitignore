@@ -1,0 +1,14 @@
+build
+upload-artifact.sh
+main
+out
+tmp
+.idea/
+target/
+.project
+.settings
+eclipsebin
+*.iml
+*.ipr
+*.iws
+.DS_Store
