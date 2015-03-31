@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/keywhizfs"
+	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 )
 

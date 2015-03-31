@@ -17,7 +17,7 @@ package keywhizfs
 import (
 	"time"
 
-	"github.com/square/keywhizfs/log"
+	"github.com/square/keywhiz-fs/log"
 )
 
 // SecretBackend represents an interface for storing secrets.

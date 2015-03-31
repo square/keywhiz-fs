@@ -26,7 +26,7 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
-	"github.com/square/keywhizfs"
+	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )

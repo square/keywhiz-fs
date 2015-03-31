@@ -1,0 +1,17 @@
+language: go
+
+sudo: true
+
+go:
+- 1.4
+- tip
+
+before_script:
+- go build keywhizfs/main.go
+- sudo apt-get install fuse-utils
+# This is to properly get fusermount on travis
+
+script:
+- go test cache_test.go util_test.go client_test.go secret_test.go secretmap_test.go
+# Note that FUSE is not completely functional on travis
+# Please run the following command to verify functionality: go test ./...

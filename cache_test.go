@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/keywhizfs"
-	"github.com/square/keywhizfs/log"
+	"github.com/square/keywhiz-fs"
+	"github.com/square/keywhiz-fs/log"
 	"github.com/stretchr/testify/assert"
 )
 
