@@ -23,7 +23,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
-	"github.com/square/keywhizfs/log"
+	"github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
 )
 

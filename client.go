@@ -23,7 +23,7 @@ import (
 	"net/http"
 	"time"
 
-	klog "github.com/square/keywhizfs/log"
+	klog "github.com/square/keywhiz-fs/log"
 )
 
 // clientRefresh is the rate the client reloads itself in the background.
