@@ -75,6 +75,34 @@ Options:
 
 The `-cert` option may be omitted if the `-key` option contains both a PEM-encoded certificate and key.
 
+## Running in Docker
+
+We have included a Dockerfile so you can easily build and run keywhiz-fs with all of its dependencies. To build a kewhizfs Docker image run the following command:
+
+```
+docker build --rm -t keywhizfs .
+```
+
+After building, you can run the newly built image by running:
+
+```
+docker run --device /dev/fuse:/dev/fuse --cap-add=IPC_LOCK --cap-add=SYS_ADMIN keywhizfs
+```
+
+Note that we have to pass `--device /dev/fuse:/dev/fuse` to mount the fuse device into the container, and give `IPC_LOCK` and `SYS_ADMIN` capabilities to the container, so it can set `cap_ipc_lock` on the keywhiz-fs binary, and so it can mount fuse-fs filesystems, respectively.
+
+### Caveats
+
+Currently keywhiz-fs is not a (12 factor)[http://12factor.net/] application, and it does not send unbuffered logs to stdout. It currently expects there to be a syslog server being ran locally.
+
+We can follow (this tutorial)[https://jpetazzo.github.io/2014/08/24/syslog-docker/] and run syslogd in a separate container, allowing us to use an external container as our syslogd. After that, we can use the external container as our keywhiz-fs syslog server:
+
+```
+docker run -it -v /tmp/syslogdev/log:/dev/log --device /dev/fuse:/dev/fuse --cap-add=IPC_LOCK --cap-add=SYS_ADMIN keywhizfs
+```
+
+Additionally, if you see the following error: `mlockall() failed with ENOMEM`, you are probably running your docker deamon with aufs, which does not support capability extensions, making `setcap 'cap_ipc_lock=+ep' /go/bin/keywhizfs` fail. You should use overlayFS instead.
+
 # Contributing
 
 Please contribute! And, please see CONTRIBUTING.md.
