@@ -93,9 +93,9 @@ Note that we have to pass `--device /dev/fuse:/dev/fuse` to mount the fuse devic
 
 ### Caveats
 
-Currently keywhiz-fs is not a (12 factor)[http://12factor.net/] application, and it does not send unbuffered logs to stdout. It currently expects there to be a syslog server being ran locally.
+Currently keywhiz-fs is not a [12 factor](http://12factor.net/) application, and it does not send unbuffered logs to stdout. It currently expects there to be a syslog server being ran locally.
 
-We can follow (this tutorial)[https://jpetazzo.github.io/2014/08/24/syslog-docker/] and run syslogd in a separate container, allowing us to use an external container as our syslogd. After that, we can use the external container as our keywhiz-fs syslog server:
+We can follow [this tutorial](https://jpetazzo.github.io/2014/08/24/syslog-docker/) and run syslogd in a separate container, allowing us to use an external container as our syslogd. After that, we can use the external container as our keywhiz-fs syslog server:
 
 ```
 docker run -it -v /tmp/syslogdev/log:/dev/log --device /dev/fuse:/dev/fuse --cap-add=IPC_LOCK --cap-add=SYS_ADMIN keywhizfs
