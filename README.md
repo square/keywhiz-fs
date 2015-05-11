@@ -1,7 +1,7 @@
 # Overview
 
 [![license](https://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/keywhiz-fs/master/LICENSE)
-[![build](https://img.shields.io/travis/square/keywhiz-fs.svg?style=flat)](https://travis-ci.org/square/keywhiz-fs)
+[![build](https://img.shields.io/travis/square/keywhiz-fs/master.svg?style=flat)](https://travis-ci.org/square/keywhiz-fs)
 
 KeywhizFs is a client for [Keywhiz][1] which represents accessible secrets as a userland filesystem (using [FUSE][2]). This client will mount a directory which contains files for each secret that is accessible.
 
