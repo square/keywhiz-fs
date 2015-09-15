@@ -102,7 +102,7 @@ func (suite *FsTestSuite) TestFileAttrs() {
 		attr, status := suite.fs.GetAttr(c.filename, fuseContext)
 		assert.Equal(fuse.OK, status, "Expected %v attr status to be fuse.OK", c.filename)
 		assert.Equal(c.mode, attr.Mode, "Expected %v mode %#o, was %#o", c.filename, c.mode, attr.Mode)
-		assert.Equal(uint32(len(c.content)), attr.Size, "Expected %v size to match", c.filename)
+		assert.Equal(uint64(len(c.content)), attr.Size, "Expected %v size to match", c.filename)
 	}
 }
 
