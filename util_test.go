@@ -14,7 +14,11 @@
 
 package keywhizfs_test
 
-import "io/ioutil"
+import (
+	"crypto/tls"
+	"fmt"
+	"io/ioutil"
+)
 
 // fixture fully reads test data from a file in the fixtures/ subdirectory.
 func fixture(file string) (content []byte) {
@@ -23,4 +27,17 @@ func fixture(file string) (content []byte) {
 		panic(err)
 	}
 	return
+}
+
+// Load the file with cert & private key into a tls.Config
+func testCerts(file string) (config *tls.Config) {
+	config = new(tls.Config)
+	cert, err := tls.LoadX509KeyPair(file, file)
+	if err != nil {
+		panic(fmt.Sprintf("keywhizfs_test TLS: %v", err))
+	}
+
+	config.Certificates = []tls.Certificate{cert}
+
+	return config
 }

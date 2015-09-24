@@ -34,7 +34,7 @@ var (
 func TestClientCallsServer(t *testing.T) {
 	assert := assert.New(t)
 
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/secrets"):
 			fmt.Fprint(w, string(fixture("secrets.json")))
@@ -44,6 +44,8 @@ func TestClientCallsServer(t *testing.T) {
 			w.WriteHeader(404)
 		}
 	}))
+	server.TLS = testCerts(caFile)
+	server.StartTLS()
 	defer server.Close()
 
 	client := keywhizfs.NewClient(clientFile, clientFile, caFile, server.URL, time.Second, logConfig, false)
