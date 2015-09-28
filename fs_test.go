@@ -102,7 +102,7 @@ func (suite *FsTestSuite) TestFileAttrs() {
 		attr, status := suite.fs.GetAttr(c.filename, fuseContext)
 		assert.Equal(fuse.OK, status, "Expected %v attr status to be fuse.OK", c.filename)
 		assert.Equal(c.mode, attr.Mode, "Expected %v mode %#o, was %#o", c.filename, c.mode, attr.Mode)
-		assert.Equal(uint32(len(c.content)), attr.Size, "Expected %v size to match", c.filename)
+		assert.Equal(uint64(len(c.content)), attr.Size, "Expected %v size to match", c.filename)
 	}
 }
 
@@ -259,7 +259,7 @@ func (suite *FsTestSuite) TestOpenDir() {
 
 func TestFsTestSuite(t *testing.T) {
 	// Starts a server for the duration of the test
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == "GET" && strings.HasPrefix(r.URL.Path, "/secrets"):
 			fmt.Fprint(w, string(fixture("secrets.json")))
@@ -271,6 +271,8 @@ func TestFsTestSuite(t *testing.T) {
 			w.WriteHeader(404)
 		}
 	}))
+	server.TLS = testCerts(caFile)
+	server.StartTLS()
 	defer server.Close()
 
 	fsSuite := new(FsTestSuite)
