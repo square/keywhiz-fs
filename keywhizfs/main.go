@@ -20,6 +20,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"os/signal"
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
@@ -97,6 +98,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
+
+	// Catch SIGINT and SIGKILL and exit cleanly.
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		sig := <-c
+		logger.Warnf("Got signal %s, unmounting", sig)
+		server.Unmount()
+	}()
 
 	server.Serve()
 }
