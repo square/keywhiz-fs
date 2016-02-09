@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -37,7 +38,7 @@ var fuseContext = &fuse.Context{Owner: fuse.Owner{Uid: 0, Gid: 0}}
 
 type FsTestSuite struct {
 	suite.Suite
-	url    string
+	url    *url.URL
 	assert *assert.Assertions
 	fs     *keywhizfs.KeywhizFs
 }
@@ -276,7 +277,8 @@ func TestFsTestSuite(t *testing.T) {
 	defer server.Close()
 
 	fsSuite := new(FsTestSuite)
-	fsSuite.url = server.URL
+	serverURL, _ := url.Parse(server.URL)
+	fsSuite.url = serverURL
 	fsSuite.assert = assert.New(t)
 
 	suite.Run(t, fsSuite)

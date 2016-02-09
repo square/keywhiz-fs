@@ -17,10 +17,11 @@ package keywhizfs
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+	"path"
 	"time"
 
 	klog "github.com/square/keywhiz-fs/log"
@@ -45,7 +46,7 @@ var ciphers = []uint16{
 type Client struct {
 	*klog.Logger
 	http func() *http.Client
-	url  string
+	url  *url.URL
 }
 
 // httpClientParams are values necessary for constructing a TLS client.
@@ -58,7 +59,7 @@ type httpClientParams struct {
 
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
 // ca file with the list of trusted certificate authorities.
-func NewClient(certFile, keyFile, caFile, serverURL string, timeout time.Duration, logConfig klog.Config, ping bool) (client Client) {
+func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config, ping bool) (client Client) {
 	logger := klog.New("kwfs_client", logConfig)
 	params := httpClientParams{certFile, keyFile, caFile, timeout}
 
@@ -105,7 +106,10 @@ func NewClient(certFile, keyFile, caFile, serverURL string, timeout time.Duratio
 // RawSecret returns raw JSON from requesting a secret.
 func (c Client) RawSecret(name string) (data []byte, ok bool) {
 	now := time.Now()
-	resp, err := c.http().Get(fmt.Sprintf("%v/secret/%v", c.url, name))
+	// note: path.Join does not know how to properly escape for URLs!
+	t := *c.url
+	t.Path = path.Join(c.url.Path, "secret", name)
+	resp, err := c.http().Get(t.String())
 	if err != nil {
 		c.Errorf("Error retrieving secret %v: %v", name, err)
 		return nil, false
@@ -150,7 +154,9 @@ func (c Client) Secret(name string) (secret *Secret, ok bool) {
 // RawSecretList returns raw JSON from requesting a listing of secrets.
 func (c Client) RawSecretList() (data []byte, ok bool) {
 	now := time.Now()
-	resp, err := c.http().Get(fmt.Sprintf("%v/secrets", c.url))
+	t := *c.url
+	t.Path = path.Join(c.url.Path, "secrets")
+	resp, err := c.http().Get(t.String())
 	if err != nil {
 		c.Errorf("Error retrieving secrets: %v", err)
 		return nil, false

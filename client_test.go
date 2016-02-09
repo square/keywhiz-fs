@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -48,7 +49,8 @@ func TestClientCallsServer(t *testing.T) {
 	server.StartTLS()
 	defer server.Close()
 
-	client := keywhizfs.NewClient(clientFile, clientFile, caFile, server.URL, time.Second, logConfig, false)
+	serverURL, _ := url.Parse(server.URL)
+	client := keywhizfs.NewClient(clientFile, clientFile, caFile, serverURL, time.Second, logConfig, false)
 
 	secrets, ok := client.SecretList()
 	assert.True(ok)
