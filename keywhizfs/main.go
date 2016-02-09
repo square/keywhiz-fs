@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"time"
 
@@ -52,7 +53,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	serverURL, mountpoint := flag.Args()[0], flag.Args()[1]
+	serverURL, err := url.Parse(flag.Args()[0])
+	if err != nil {
+		log.Fatalf("Invalid url: %s\n", err)
+		os.Exit(1)
+	}
+	mountpoint := flag.Args()[1]
 
 	logConfig := klog.Config{*debug, mountpoint}
 	logger = klog.New("kwfs_main", logConfig)
