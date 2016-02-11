@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	klog "github.com/square/keywhiz-fs/log"
@@ -130,7 +131,8 @@ func (c Client) RawSecret(name string) (data []byte, ok bool) {
 		c.Warnf("Secret %v not found", name)
 		return nil, false
 	default:
-		c.Errorf("Bad response code getting secret %v: (status=%v, msg='%v')", name, resp.StatusCode, data)
+		msg := strings.Join(strings.Split(string(data), "\n"), " ")
+		c.Errorf("Bad response code getting secret %v: (status=%v, msg='%s')", name, resp.StatusCode, msg)
 		return nil, false
 	}
 }
@@ -171,7 +173,8 @@ func (c Client) RawSecretList() (data []byte, ok bool) {
 	}
 
 	if resp.StatusCode != 200 {
-		c.Errorf("Bad response code getting secrets: (status=%v, msg='%v')", resp.StatusCode, data)
+		msg := strings.Join(strings.Split(string(data), "\n"), " ")
+		c.Errorf("Bad response code getting secrets: (status=%v, msg='%s')", resp.StatusCode, msg)
 		return nil, false
 	}
 	return data, true
