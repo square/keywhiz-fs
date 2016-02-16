@@ -12,3 +12,4 @@ eclipsebin
 *.ipr
 *.iws
 .DS_Store
+vendor/
