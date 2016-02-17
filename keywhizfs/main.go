@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"time"
 
 	"github.com/hanwen/go-fuse/fuse"
@@ -39,6 +40,7 @@ var (
 	ping           = flag.Bool("ping", false, "Enable startup ping to server")
 	debug          = flag.Bool("debug", false, "Enable debugging output")
 	timeoutSeconds = flag.Uint("timeout", 20, "Timeout for communication with server")
+	metricsURL     = flag.String("metrics-url", "", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).")
 	logger         *klog.Logger
 )
 
@@ -68,6 +70,11 @@ func main() {
 	if *certFile == "" {
 		logger.Debugf("Certificate file not specified, assuming certificate also in %s", *keyFile)
 		certFile = keyFile
+	}
+
+	if *metricsURL != "" && !strings.HasPrefix(*metricsURL, "http://") && !strings.HasPrefix(*metricsURL, "https://") {
+		log.Fatalf("--metrics-url should start with http:// or https://")
+		os.Exit(1)
 	}
 
 	lockMemory()
@@ -107,6 +114,21 @@ func main() {
 		logger.Warnf("Got signal %s, unmounting", sig)
 		server.Unmount()
 	}()
+
+	// Setup metrics
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Fatalf("unable to get hostname: %s", err)
+		os.Exit(1)
+	}
+	// Replace slashes with _ for easier aggregation
+	mountpoint_escaped := strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1)
+	metrics := keywhizfs.NewMetricsConfig(*metricsURL, fmt.Sprintf("keywhizfs.%s", mountpoint_escaped), hostname, logConfig)
+	if *metricsURL != "" {
+		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
+		go metrics.CollectSystemMetrics()
+		go metrics.PublishMetrics()
+	}
 
 	server.Serve()
 }
