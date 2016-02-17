@@ -79,10 +79,11 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 
 	// Asynchronously updates client and owns current reference.
 	go func() {
-		var current = *initial
+		current := *initial
+		ticker := time.Tick(clientRefresh)
 		for {
 			select {
-			case t := <-time.Tick(clientRefresh): // Periodically update client.
+			case t := <-ticker: // Periodically update client.
 				logger.Infof("Updating http client at %v", t)
 				if c, err := params.buildClient(); err != nil {
 					logger.Errorf("Error refreshing http client: %v", err)
