@@ -64,12 +64,12 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 	logger := klog.New("kwfs_client", logConfig)
 	params := httpClientParams{certFile, keyFile, caFile, timeout}
 
-	reqc := make(chan http.Client)
+	reqc := make(chan *http.Client)
 
 	// Getter from channel.
 	getClient := func() *http.Client {
 		client := <-reqc
-		return &(client)
+		return client
 	}
 
 	initial, err := params.buildClient()
@@ -79,15 +79,16 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 
 	// Asynchronously updates client and owns current reference.
 	go func() {
-		var current = *initial
+		current := initial
+		ticker := time.Tick(clientRefresh)
 		for {
 			select {
-			case t := <-time.Tick(clientRefresh): // Periodically update client.
+			case t := <-ticker: // Periodically update client.
 				logger.Infof("Updating http client at %v", t)
-				if c, err := params.buildClient(); err != nil {
+				if client, err := params.buildClient(); err != nil {
 					logger.Errorf("Error refreshing http client: %v", err)
 				} else {
-					current = *c
+					current = client
 				}
 			case reqc <- current: // Service request for current client.
 			}
