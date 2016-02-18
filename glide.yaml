@@ -1,0 +1,13 @@
+package: github.com/square/keywhiz-fs
+import:
+- package: github.com/hanwen/go-fuse
+  subpackages:
+  - /fuse
+  - fuse/nodefs
+  - fuse/pathfs
+- package: golang.org/x/sys
+  subpackages:
+  - /unix
+- package: github.com/stretchr/testify
+  subpackages:
+  - /assert

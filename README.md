@@ -29,11 +29,12 @@ KeywhizFs will display all secrets under the top level directory of the mountpoi
 
 # Building
 
-Run `go build keywhizfs/main.go`.
+Install glide (`go get github.com/Masterminds/glide` or `brew install glide` if you are on Mac OS X)
+Run `make build`.
 
 # Testing
 
-Simply run `go test ./...`.
+Simply run `make test`.
 
 # Running
 
