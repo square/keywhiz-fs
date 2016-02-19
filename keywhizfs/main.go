@@ -106,6 +106,7 @@ func main() {
 		sig := <-c
 		logger.Warnf("Got signal %s, unmounting", sig)
 		server.Unmount()
+		os.Exit(1)
 	}()
 
 	server.Serve()
