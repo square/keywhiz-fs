@@ -1,32 +1,27 @@
-hash: cb9faace7c2dee13505492343514bfaa556a57a1726a8dc86c01f2fdbf94a447
-updated: 2016-02-18T14:55:22.244033071-08:00
+hash: 3fb21e0e2d4062d0de91b07fa04212558ddb5b38e3511ee814ddb9e38bbe6907
+updated: 2016-02-24T15:12:16.567059963-08:00
 imports:
-- name: github.com/davecgh/go-spew
-  version: 2df174808ee097f90d259e432cc04442cf60be21
-  subpackages:
-  - spew
 - name: github.com/hanwen/go-fuse
-  version: ba787feaaba0ee14ee3585cb70c8e96ae0ae8a64
+  version: 9ecf4dc59b43a0870562e61d7d9fc7d40e263ada
   subpackages:
-  - /fuse
+  - fuse
   - fuse/nodefs
   - fuse/pathfs
-- name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
-  subpackages:
-  - difflib
+  - splice
 - name: github.com/rcrowley/go-metrics
   version: 51425a2415d21afadfd55cd93432c0bc69e9598d
-- name: github.com/stathat/go
-  version: cf69b0bcb80478755dc0ea1120b36000e35dcbbb
-- name: github.com/stretchr/objx
-  version: cbeaeb16a013161a98496fad62933b1d21786672
-- name: github.com/stretchr/testify
-  version: 9f9027faeb0dad515336ed2f28317f9f8f527ab4
+- name: github.com/square/go-sq-metrics
+  version: fee8afed8130469572261b06eb06a54eab2bb219
+- name: github.com/square/keywhiz-fs
+  version: 3f2dd68f01f03b7ae627549b1d889696e0b1b5ff
   subpackages:
-  - /assert
+  - log
+- name: github.com/stretchr/testify
+  version: 1f4a1643a57e798696635ea4c126e9127adb7d3c
+  subpackages:
+  - assert
 - name: golang.org/x/sys
   version: 50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e
   subpackages:
-  - /unix
+  - unix
 devImports: []

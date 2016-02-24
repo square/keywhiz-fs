@@ -26,6 +26,8 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
+	"github.com/rcrowley/go-metrics"
+	"github.com/square/go-sq-metrics"
 	"github.com/square/keywhiz-fs"
 	klog "github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
@@ -116,18 +118,11 @@ func main() {
 	}()
 
 	// Setup metrics
-	hostname, err := os.Hostname()
-	if err != nil {
-		log.Fatalf("unable to get hostname: %s", err)
-		os.Exit(1)
-	}
 	// Replace slashes with _ for easier aggregation
-	mountpoint_escaped := strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1)
-	metrics := keywhizfs.NewMetricsConfig(*metricsURL, fmt.Sprintf("keywhizfs.%s", mountpoint_escaped), hostname, logConfig)
 	if *metricsURL != "" {
 		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
-		go metrics.CollectSystemMetrics()
-		go metrics.PublishMetrics()
+		mountpoint_escaped := strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1)
+		sqmetrics.NewMetrics(*metricsURL, fmt.Sprintf("keywhizfs.%s", mountpoint_escaped), metrics.DefaultRegistry)
 	}
 
 	server.Serve()
