@@ -43,6 +43,7 @@ var (
 	debug          = flag.Bool("debug", false, "Enable debugging output")
 	timeoutSeconds = flag.Uint("timeout", 20, "Timeout for communication with server")
 	metricsURL     = flag.String("metrics-url", "", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).")
+	metricsPrefix  = flag.String("metrics-prefix", "", "Override the default metrics prefix used for reporting metrics.")
 	logger         *klog.Logger
 )
 
@@ -121,8 +122,16 @@ func main() {
 	// Replace slashes with _ for easier aggregation
 	if *metricsURL != "" {
 		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
-		mountpoint_escaped := strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1)
-		sqmetrics.NewMetrics(*metricsURL, fmt.Sprintf("keywhizfs.%s", mountpoint_escaped), metrics.DefaultRegistry)
+
+		var prefix string
+		if *metricsPrefix != "" {
+			prefix = *metricsPrefix
+		} else {
+			// By default, prefix metrics with escaped mount path
+			prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
+		}
+
+		sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
 	}
 
 	server.Serve()
