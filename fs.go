@@ -182,6 +182,13 @@ func (kwfs KeywhizFs) Unlink(name string, context *fuse.Context) fuse.Status {
 	return fuse.EACCES
 }
 
+// StatFs is a FUSE function called to provide information about the filesystem
+// We return zeros, which makes "df" think this is a dummy fs, which it is.
+func (kwfs KeywhizFs) StatFs(name string) *fuse.StatfsOut {
+	kwfs.Debugf("StatFs called with '%v'", name)
+	return &fuse.StatfsOut{}
+}
+
 // secretsDirListing produces directory entries containing all secret files. Extra entries passed
 // to this function are included.
 func (kwfs KeywhizFs) secretsDirListing(extraEntries ...fuse.DirEntry) []fuse.DirEntry {
