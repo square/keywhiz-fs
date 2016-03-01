@@ -2,7 +2,8 @@ export GO15VENDOREXPERIMENT = 1
 
 # Build
 build: depends git-fsck
-	go build keywhizfs/main.go
+	mkdir -p ${GOPATH}/bin
+	go build -o ${GOPATH}/bin/keywhizfs keywhizfs/main.go
 
 # Dependencies
 depends:
