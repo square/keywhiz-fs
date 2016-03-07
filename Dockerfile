@@ -15,7 +15,7 @@ RUN useradd -ms /bin/false keywhiz
 COPY . /go/src/github.com/square/keywhiz-fs
 
 # Install keywhizfs
-RUN go get github.com/square/keywhiz-fs/keywhizfs
+RUN go get github.com/square/keywhiz-fs
 
 # Allows keywhiz-fs to expose its filesystems to other users besides the owner of the process
 RUN echo "user_allow_other" >> /etc/fuse.conf

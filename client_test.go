@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keywhizfs_test
+package main
 
 import (
 	"fmt"
@@ -23,13 +23,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	clientFile = "fixtures/client.pem"
-	caFile     = "fixtures/localhost.crt"
+	testCaFile = "fixtures/localhost.crt"
 )
 
 func TestClientCallsServer(t *testing.T) {
@@ -45,12 +44,12 @@ func TestClientCallsServer(t *testing.T) {
 			w.WriteHeader(404)
 		}
 	}))
-	server.TLS = testCerts(caFile)
+	server.TLS = testCerts(testCaFile)
 	server.StartTLS()
 	defer server.Close()
 
 	serverURL, _ := url.Parse(server.URL)
-	client := keywhizfs.NewClient(clientFile, clientFile, caFile, serverURL, time.Second, logConfig, false)
+	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig, false)
 
 	secrets, ok := client.SecretList()
 	assert.True(ok)

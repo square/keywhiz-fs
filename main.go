@@ -28,7 +28,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/rcrowley/go-metrics"
 	"github.com/square/go-sq-metrics"
-	"github.com/square/keywhiz-fs"
 	klog "github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
 )
@@ -37,8 +36,8 @@ var (
 	certFile       = flag.String("cert", "", "PEM-encoded certificate file")
 	keyFile        = flag.String("key", "client.key", "PEM-encoded private key file")
 	caFile         = flag.String("ca", "cacert.crt", "PEM-encoded CA certificates file")
-	user           = flag.String("asuser", "keywhiz", "Default user to own files")
-	group          = flag.String("group", "keywhiz", "Default group to own files")
+	asuser         = flag.String("asuser", "keywhiz", "Default user to own files")
+	asgroup        = flag.String("group", "keywhiz", "Default group to own files")
 	ping           = flag.Bool("ping", false, "Enable startup ping to server")
 	debug          = flag.Bool("debug", false, "Enable debugging output")
 	timeoutSeconds = flag.Uint("timeout", 20, "Timeout for communication with server")
@@ -86,12 +85,12 @@ func main() {
 	freshThreshold := 200 * time.Millisecond
 	backendDeadline := 500 * time.Millisecond
 	maxWait := clientTimeout + backendDeadline
-	timeouts := keywhizfs.Timeouts{freshThreshold, backendDeadline, maxWait}
+	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait}
 
-	client := keywhizfs.NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig, *ping)
+	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig, *ping)
 
-	ownership := keywhizfs.NewOwnership(*user, *group)
-	kwfs, root, err := keywhizfs.NewKeywhizFs(&client, ownership, timeouts, logConfig)
+	ownership := NewOwnership(*asuser, *asgroup)
+	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, logConfig)
 	if err != nil {
 		log.Fatalf("KeywhizFs init fail: %v\n", err)
 	}
