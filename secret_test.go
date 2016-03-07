@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keywhizfs_test
+package main
 
 import (
 	"testing"
 	"time"
 
-	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
@@ -26,7 +25,7 @@ import (
 func TestDeserializeSecret(t *testing.T) {
 	assert := assert.New(t)
 
-	s, err := keywhizfs.ParseSecret(fixture("secret.json"))
+	s, err := ParseSecret(fixture("secret.json"))
 	assert.NoError(err)
 	assert.Equal("Nobody_PgPass", s.Name)
 	assert.EqualValues(6, s.Length)
@@ -43,7 +42,7 @@ func TestDeserializeSecret(t *testing.T) {
 func TestDeserializeSecretWithoutBase64Padding(t *testing.T) {
 	assert := assert.New(t)
 
-	s, err := keywhizfs.ParseSecret(fixture("secretWithoutBase64Padding.json"))
+	s, err := ParseSecret(fixture("secretWithoutBase64Padding.json"))
 	assert.NoError(err)
 	assert.Equal("NonexistentOwner_Pass", s.Name)
 	assert.EqualValues("12345", s.Content)
@@ -54,7 +53,7 @@ func TestDeserializeSecretList(t *testing.T) {
 
 	fixtures := []string{"secrets.json", "secretsWithoutContent.json"}
 	for _, f := range fixtures {
-		secrets, err := keywhizfs.ParseSecretList(fixture(f))
+		secrets, err := ParseSecretList(fixture(f))
 		assert.NoError(err)
 		assert.Len(secrets, 2)
 	}
@@ -64,12 +63,12 @@ func TestSecretModeValue(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := []struct {
-		secret keywhizfs.Secret
+		secret Secret
 		mode   uint32
 	}{
-		{keywhizfs.Secret{Mode: "0440"}, 288},
-		{keywhizfs.Secret{Mode: "0400"}, 256},
-		{keywhizfs.Secret{}, 288},
+		{Secret{Mode: "0440"}, 288},
+		{Secret{Mode: "0400"}, 256},
+		{Secret{}, 288},
 	}
 	for _, c := range cases {
 		assert.Equal(c.mode|unix.S_IFREG, c.secret.ModeValue())

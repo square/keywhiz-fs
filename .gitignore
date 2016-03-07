@@ -11,5 +11,7 @@ eclipsebin
 *.iml
 *.ipr
 *.iws
+*.out
 .DS_Store
 vendor/
+keywhiz-fs

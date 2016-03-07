@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keywhizfs_test
+package main
 
 import (
 	"fmt"
@@ -27,7 +27,6 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
-	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 )
@@ -40,14 +39,14 @@ type FsTestSuite struct {
 	suite.Suite
 	url    *url.URL
 	assert *assert.Assertions
-	fs     *keywhizfs.KeywhizFs
+	fs     *KeywhizFs
 }
 
 func (suite *FsTestSuite) SetupTest() {
-	timeouts := keywhizfs.Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
-	client := keywhizfs.NewClient(clientFile, clientFile, caFile, suite.url, timeouts.MaxWait, logConfig, false)
-	ownership := keywhizfs.Ownership{Uid: _SomeUID, Gid: _SomeUID}
-	kwfs, _, _ := keywhizfs.NewKeywhizFs(&client, ownership, timeouts, logConfig)
+	timeouts := Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
+	client := NewClient(clientFile, clientFile, testCaFile, suite.url, timeouts.MaxWait, logConfig, false)
+	ownership := Ownership{Uid: _SomeUID, Gid: _SomeUID}
+	kwfs, _, _ := NewKeywhizFs(&client, ownership, timeouts, logConfig)
 	suite.fs = kwfs
 }
 
@@ -60,7 +59,7 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 		mode     int
 	}{
 		{"", 4096, 0755 | fuse.S_IFDIR},
-		{".version", len(keywhizfs.VERSION), 0444 | fuse.S_IFREG},
+		{".version", len(VERSION), 0444 | fuse.S_IFREG},
 		{".running", -1, 0444 | fuse.S_IFREG},
 		{".clear_cache", 0, 0440 | fuse.S_IFREG},
 		{".json", 4096, 0700 | fuse.S_IFDIR},
@@ -82,9 +81,9 @@ func (suite *FsTestSuite) TestFileAttrs() {
 	assert := suite.assert
 
 	nobodySecretData := fixture("secret.json")
-	nobodySecret, _ := keywhizfs.ParseSecret(nobodySecretData)
+	nobodySecret, _ := ParseSecret(nobodySecretData)
 	hmacSecretData := fixture("secretNormalOwner.json")
-	hmacSecret, _ := keywhizfs.ParseSecret(hmacSecretData)
+	hmacSecret, _ := ParseSecret(hmacSecretData)
 	secretListData := fixture("secrets.json")
 
 	cases := []struct {
@@ -147,7 +146,7 @@ func (suite *FsTestSuite) TestSpecialFileOpen() {
 
 	file, status := suite.fs.Open(".version", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
-	assert.EqualValues(keywhizfs.VERSION, read(file))
+	assert.EqualValues(VERSION, read(file))
 
 	file, status = suite.fs.Open(".clear_cache", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
@@ -162,9 +161,9 @@ func (suite *FsTestSuite) TestOpen() {
 	assert := suite.assert
 
 	nobodySecretData := fixture("secret.json")
-	nobodySecret, _ := keywhizfs.ParseSecret(nobodySecretData)
+	nobodySecret, _ := ParseSecret(nobodySecretData)
 	hmacSecretData := fixture("secretNormalOwner.json")
-	hmacSecret, _ := keywhizfs.ParseSecret(hmacSecretData)
+	hmacSecret, _ := ParseSecret(hmacSecretData)
 	secretListData := fixture("secrets.json")
 
 	read := func(f nodefs.File) []byte {
@@ -199,10 +198,10 @@ func (suite *FsTestSuite) TestOpenBadFiles() {
 		filename string
 		status   fuse.Status
 	}{
-		{"", keywhizfs.EISDIR},
+		{"", EISDIR},
 		{"non-existent", fuse.ENOENT},
 		{".json/secret/non-existent", fuse.ENOENT},
-		{".json/secret", keywhizfs.EISDIR},
+		{".json/secret", EISDIR},
 	}
 
 	for _, c := range cases {
@@ -272,7 +271,7 @@ func TestFsTestSuite(t *testing.T) {
 			w.WriteHeader(404)
 		}
 	}))
-	server.TLS = testCerts(caFile)
+	server.TLS = testCerts(testCaFile)
 	server.StartTLS()
 	defer server.Close()
 

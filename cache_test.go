@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keywhizfs_test
+package main
 
 import (
 	"testing"
 	"time"
 
-	"github.com/square/keywhiz-fs"
 	"github.com/square/keywhiz-fs/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,42 +28,42 @@ var logConfig = log.Config{Debug: false, Mountpoint: "/tmp/mnt"}
 type FailingBackend struct {
 }
 
-func (b FailingBackend) Secret(name string) (*keywhizfs.Secret, bool) {
+func (b FailingBackend) Secret(name string) (*Secret, bool) {
 	return nil, false
 }
 
-func (b FailingBackend) SecretList() ([]keywhizfs.Secret, bool) {
+func (b FailingBackend) SecretList() ([]Secret, bool) {
 	return nil, false
 }
 
 // ChannelBackend reads values from channels to return or blocks.
 type ChannelBackend struct {
-	secretc     chan *keywhizfs.Secret
-	secretListc chan []keywhizfs.Secret
+	secretc     chan *Secret
+	secretListc chan []Secret
 }
 
-func (b ChannelBackend) Secret(name string) (*keywhizfs.Secret, bool) {
+func (b ChannelBackend) Secret(name string) (*Secret, bool) {
 	secret := <-b.secretc
 	return secret, true
 }
 
-func (b ChannelBackend) SecretList() ([]keywhizfs.Secret, bool) {
+func (b ChannelBackend) SecretList() ([]Secret, bool) {
 	secretList := <-b.secretListc
 	return secretList, true
 }
 
-var timeouts = keywhizfs.Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
+var timeouts = Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
 
 func TestCacheSecretUsesValuesFromClient(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	secretc := make(chan *keywhizfs.Secret, 1)
+	secretc := make(chan *Secret, 1)
 	backend := ChannelBackend{secretc: secretc}
 	secretc <- secretFixture
 
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 	secret, ok := cache.Secret("password-file")
 	assert.True(ok)
 	assert.Equal(secretFixture, secret)
@@ -73,9 +72,9 @@ func TestCacheSecretUsesValuesFromClient(t *testing.T) {
 func TestCachePassesThroughSecretNotFound(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	cache := keywhizfs.NewCache(FailingBackend{}, timeouts, logConfig)
+	cache := NewCache(FailingBackend{}, timeouts, logConfig)
 	secret, ok := cache.Secret(secretFixture.Name)
 	assert.False(ok)
 	assert.Nil(secret)
@@ -89,9 +88,9 @@ func TestCachePassesThroughSecretNotFound(t *testing.T) {
 func TestCacheSecretWhenClientTimesOut(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	backend := ChannelBackend{} // channels are nil and will block
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 
 	// empty cache
 	secret, ok := cache.Secret(secretFixture.Name)
@@ -108,15 +107,15 @@ func TestCacheSecretWhenClientTimesOut(t *testing.T) {
 func TestCacheSecretUsesClientOverCache(t *testing.T) {
 	assert := assert.New(t)
 
-	fixture1, _ := keywhizfs.ParseSecret(fixture("secret.json"))
-	fixture2, _ := keywhizfs.ParseSecret(fixture("secretNormalOwner.json"))
+	fixture1, _ := ParseSecret(fixture("secret.json"))
+	fixture2, _ := ParseSecret(fixture("secretNormalOwner.json"))
 	fixture2.Name = fixture1.Name
 
-	secretc := make(chan *keywhizfs.Secret, 1)
+	secretc := make(chan *Secret, 1)
 	backend := ChannelBackend{secretc: secretc}
 	secretc <- fixture1
 
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 
 	// Although fixture2 is in the cache, the client returns fixture1.
@@ -130,18 +129,18 @@ func TestCacheSecretUsesClientOverCache(t *testing.T) {
 func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 	assert := assert.New(t)
 
-	fixture1, _ := keywhizfs.ParseSecret(fixture("secret.json"))
-	fixture2, _ := keywhizfs.ParseSecret(fixture("secretNormalOwner.json"))
+	fixture1, _ := ParseSecret(fixture("secret.json"))
+	fixture2, _ := ParseSecret(fixture("secretNormalOwner.json"))
 	fixture2.Name = fixture1.Name
 
 	// Backend has fixture1, cache has fixture2
-	secretc := make(chan *keywhizfs.Secret, 1)
+	secretc := make(chan *Secret, 1)
 	backend := ChannelBackend{secretc: secretc}
 	secretc <- fixture1
 
 	// 1 Hour fresh threshold is sure to be fresh
-	timeouts := keywhizfs.Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond}
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	timeouts := Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond}
+	cache := NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 
 	secret, ok := cache.Secret(fixture2.Name)
@@ -152,8 +151,8 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 	assert.Equal(fixture2, secret)
 
 	// 1 Nanosecond fresh threshold is sure to make a server request
-	timeouts = keywhizfs.Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond}
-	cache = keywhizfs.NewCache(backend, timeouts, logConfig)
+	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond}
+	cache = NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 	time.Sleep(2 * time.Nanosecond)
 
@@ -165,9 +164,9 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 func TestCacheSecretListUsesValuesFromCacheIfClientFails(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	cache := keywhizfs.NewCache(FailingBackend{}, timeouts, logConfig)
+	cache := NewCache(FailingBackend{}, timeouts, logConfig)
 	cache.Add(*secretFixture)
 	list := cache.SecretList()
 	assert.Len(list, 1)
@@ -177,9 +176,9 @@ func TestCacheSecretListUsesValuesFromCacheIfClientFails(t *testing.T) {
 func TestCacheSecretListWhenClientTimesOut(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	backend := ChannelBackend{} // channels are nil and will block
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 
 	// cache empty
 	list := cache.SecretList()
@@ -195,13 +194,13 @@ func TestCacheSecretListWhenClientTimesOut(t *testing.T) {
 func TestCacheSecretListUsesValuesFromClient(t *testing.T) {
 	assert := assert.New(t)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	secretListc := make(chan []keywhizfs.Secret, 1)
+	secretListc := make(chan []Secret, 1)
 	backend := ChannelBackend{secretListc: secretListc}
-	secretListc <- []keywhizfs.Secret{*secretFixture}
+	secretListc <- []Secret{*secretFixture}
 
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 	list := cache.SecretList()
 	assert.Len(list, 1)
 	assert.Contains(list, *secretFixture)
@@ -212,14 +211,14 @@ func TestCacheSecretListUsesValuesFromClient(t *testing.T) {
 func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 	assert := assert.New(t)
 
-	fixture1, _ := keywhizfs.ParseSecret(fixture("secret.json"))
-	fixture2, _ := keywhizfs.ParseSecret(fixture("secretNormalOwner.json"))
+	fixture1, _ := ParseSecret(fixture("secret.json"))
+	fixture2, _ := ParseSecret(fixture("secretNormalOwner.json"))
 
-	secretListc := make(chan []keywhizfs.Secret, 1)
+	secretListc := make(chan []Secret, 1)
 	backend := ChannelBackend{secretListc: secretListc}
-	secretListc <- []keywhizfs.Secret{*fixture1}
+	secretListc <- []Secret{*fixture1}
 
-	cache := keywhizfs.NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 
 	// Although fixture2 is in the cache, the client says only fixture1 available.
@@ -233,9 +232,9 @@ func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 func TestCacheClears(t *testing.T) {
 	assert := assert.New(t)
 
-	cache := keywhizfs.NewCache(nil, timeouts, logConfig)
+	cache := NewCache(nil, timeouts, logConfig)
 
-	secretFixture, _ := keywhizfs.ParseSecret(fixture("secret.json"))
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	cache.Add(*secretFixture)
 	assert.NotEqual(0, cache.Len())
 

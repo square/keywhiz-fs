@@ -1,29 +1,29 @@
 language: go
 
-sudo: true
+sudo: required
+dist: trusty
 
 env:
 - GO15VENDOREXPERIMENT=1
 
-matrix:
-  allow_failures:
-    - go: tip
-
 go:
-- 1.5
-- tip
+- 1.6
 
 before_script:
 - go vet
 
 before_install:
 - go get github.com/Masterminds/glide
-- make depends
+- go get github.com/axw/gocov/gocov
+- go get github.com/mattn/goveralls
+- go get golang.org/x/tools/cmd/cover
+- sudo apt-get install fuse
 
 install:
 - make build
-- sudo apt-get install fuse-utils
-# This is to properly get fusermount on travis
 
 script:
-- go test -v .
+- make test
+
+after_success:
+- $HOME/gopath/bin/goveralls -coverprofile coverage.out -service=travis-ci

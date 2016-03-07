@@ -12,22 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package keywhizfs_test
+package main
 
 import (
 	"testing"
 
-	"github.com/square/keywhiz-fs"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSecretMapOperations(t *testing.T) {
 	assert := assert.New(t)
 
-	s, err := keywhizfs.ParseSecret(fixture("secret.json"))
+	s, err := ParseSecret(fixture("secret.json"))
 	assert.NoError(err)
 
-	secretMap := keywhizfs.NewSecretMap()
+	secretMap := NewSecretMap()
 	assert.Equal(0, secretMap.Len())
 	assert.Empty(secretMap.Values())
 
@@ -45,14 +44,14 @@ func TestSecretMapOperations(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(*s, lookup.Secret)
 
-	put := secretMap.PutIfAbsent("foo", keywhizfs.Secret{})
+	put := secretMap.PutIfAbsent("foo", Secret{})
 	assert.False(put)
 
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.Equal(*s, lookup.Secret)
 
-	secretMap.Put("foo", keywhizfs.Secret{})
+	secretMap.Put("foo", Secret{})
 
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
@@ -62,13 +61,13 @@ func TestSecretMapOperations(t *testing.T) {
 func TestSecretMapOverwrite(t *testing.T) {
 	assert := assert.New(t)
 
-	s, err := keywhizfs.ParseSecret(fixture("secret.json"))
+	s, err := ParseSecret(fixture("secret.json"))
 	assert.NoError(err)
 
-	secretMap := keywhizfs.NewSecretMap()
-	secretMap.Put("foo", keywhizfs.Secret{})
+	secretMap := NewSecretMap()
+	secretMap.Put("foo", Secret{})
 
-	newMap := keywhizfs.NewSecretMap()
+	newMap := NewSecretMap()
 	newMap.Put("bar", *s)
 	secretMap.Overwrite(newMap)
 
@@ -81,14 +80,14 @@ func TestSecretMapOverwrite(t *testing.T) {
 func TestSecretMapTimestamp(t *testing.T) {
 	assert := assert.New(t)
 
-	secretMap := keywhizfs.NewSecretMap()
-	secretMap.Put("foo", keywhizfs.Secret{})
+	secretMap := NewSecretMap()
+	secretMap.Put("foo", Secret{})
 
 	val, ok := secretMap.Get("foo")
 	assert.True(ok)
 	earlierTime := val.Time
 
-	secretMap.Put("foo", keywhizfs.Secret{})
+	secretMap.Put("foo", Secret{})
 	val, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.True(val.Time.After(earlierTime))
