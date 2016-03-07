@@ -2,6 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/keywhiz-fs/master/LICENSE)
 [![build](https://img.shields.io/travis/square/keywhiz-fs/master.svg?style=flat)](https://travis-ci.org/square/keywhiz-fs)
+[![coverage](https://coveralls.io/repos/github/square/keywhiz-fs/badge.svg?branch=master)](https://coveralls.io/github/square/keywhiz-fs?branch=master)
 
 KeywhizFs is a client for [Keywhiz][1] which represents accessible secrets as a userland filesystem (using [FUSE][2]). This client will mount a directory which contains files for each secret that is accessible.
 
@@ -25,16 +26,11 @@ KeywhizFs will display all secrets under the top level directory of the mountpoi
 - `.json/`
  - This sub-directory mimics the REST API of Keywhiz. Reading files will directly communicate with the backend server and display the unparsed JSON response.
 
-# Filesystem permissions
-
 # Building
 
-Install glide (`go get github.com/Masterminds/glide` or `brew install glide` if you are on Mac OS X)
-Run `make build`.
+Install glide (`go get github.com/Masterminds/glide` or `brew install glide` if you are on Mac OS X).
 
-# Testing
-
-Simply run `make test`.
+Run `make build` to build a binary and `make test` to run tests.
 
 # Running
 
