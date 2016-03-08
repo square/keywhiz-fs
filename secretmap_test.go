@@ -40,11 +40,14 @@ func TestSecretMapOperations(t *testing.T) {
 	assert.Len(values, 1)
 	assert.Equal(*s, values[0].Secret)
 
+	put := secretMap.PutIfAbsent("test", Secret{})
+	assert.True(put)
+
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.Equal(*s, lookup.Secret)
 
-	put := secretMap.PutIfAbsent("foo", Secret{})
+	put = secretMap.PutIfAbsent("foo", Secret{})
 	assert.False(put)
 
 	lookup, ok = secretMap.Get("foo")

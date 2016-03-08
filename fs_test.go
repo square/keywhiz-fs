@@ -75,6 +75,10 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 			assert.EqualValues(c.size, attr.Size, "Expected %v size %d, was %d", c.filename, c.size, attr.Size)
 		}
 	}
+
+	attr, status := suite.fs.GetAttr("invalid", nil)
+	assert.Nil(attr)
+	assert.EqualValues(fuse.ENOENT, status, "Invalid file attr should give ENOENT")
 }
 
 func (suite *FsTestSuite) TestFileAttrs() {
@@ -255,6 +259,10 @@ func (suite *FsTestSuite) TestOpenDir() {
 			assert.Equal(expectedIsFile, fsEntry.Mode&fuse.S_IFREG == fuse.S_IFREG)
 		}
 	}
+
+	fsEntries, status := suite.fs.OpenDir("invalid", fuseContext)
+	assert.Nil(fsEntries)
+	assert.Equal(fuse.ENOENT, status, "Invalid directory should give ENOENT")
 }
 
 func TestFsTestSuite(t *testing.T) {
@@ -281,4 +289,26 @@ func TestFsTestSuite(t *testing.T) {
 	fsSuite.assert = assert.New(t)
 
 	suite.Run(t, fsSuite)
+}
+
+func (suite *FsTestSuite) TestUnlink() {
+	assert := suite.assert
+	status := suite.fs.Unlink("invalid", fuseContext)
+	assert.Equal(fuse.EACCES, status, "Invalid unlink should give EACCES")
+
+	suite.fs.Cache.Add(Secret{Name: "test"})
+	status = suite.fs.Unlink(".clear_cache", fuseContext)
+	assert.Equal(fuse.OK, status, "Unlink on .clear_cache should give OK")
+	assert.Equal(suite.fs.Cache.Len(), 0, "Should clear cache")
+}
+
+func (suite *FsTestSuite) TestStat() {
+	assert := suite.assert
+	stat := suite.fs.StatFs("")
+	assert.NotNil(stat)
+}
+
+func (suite *FsTestSuite) TestString() {
+	assert := suite.assert
+	assert.Equal(suite.fs.String(), "keywhiz-fs")
 }

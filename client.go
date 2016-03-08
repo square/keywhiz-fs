@@ -29,7 +29,7 @@ import (
 )
 
 // clientRefresh is the rate the client reloads itself in the background.
-const clientRefresh = 10 * time.Minute
+var clientRefresh = 10 * time.Minute
 
 // Cipher suites enabled in the client. No RC4 or 3DES.
 var ciphers = []uint16{
