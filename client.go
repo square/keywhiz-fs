@@ -46,16 +46,17 @@ var ciphers = []uint16{
 // Client basic struct.
 type Client struct {
 	*klog.Logger
-	http func() *http.Client
-	url  *url.URL
+	http   func() *http.Client
+	url    *url.URL
+	params httpClientParams
 }
 
 // httpClientParams are values necessary for constructing a TLS client.
 type httpClientParams struct {
-	certFile,
-	keyFile,
-	caFile string
-	timeout time.Duration
+	CertFile string `json:"cert_file"`
+	KeyFile  string `json:"key_file"`
+	CaBundle string `json:"ca_bundle"`
+	timeout  time.Duration
 }
 
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
@@ -73,9 +74,7 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 	}
 
 	initial, err := params.buildClient()
-	if err != nil {
-		panic(err)
-	}
+	panicOnError(err)
 
 	// Asynchronously updates client and owns current reference.
 	go func() {
@@ -95,7 +94,7 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 		}
 	}()
 
-	client = Client{logger, getClient, serverURL}
+	client = Client{logger, getClient, serverURL, params}
 	if ping {
 		if _, ok := client.SecretList(); !ok {
 			log.Fatalf("Failed startup /secrets ping to %v", client.url)
@@ -198,12 +197,12 @@ func (c Client) SecretList() (secrets []Secret, ok bool) {
 
 // buildClient constructs a new TLS client.
 func (p httpClientParams) buildClient() (client *http.Client, err error) {
-	keyPair, err := tls.LoadX509KeyPair(p.certFile, p.keyFile)
+	keyPair, err := tls.LoadX509KeyPair(p.CertFile, p.KeyFile)
 	if err != nil {
 		return
 	}
 
-	caCert, err := ioutil.ReadFile(p.caFile)
+	caCert, err := ioutil.ReadFile(p.CaBundle)
 	if err != nil {
 		return
 	}
