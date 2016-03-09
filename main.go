@@ -65,7 +65,7 @@ func main() {
 	}
 	mountpoint := flag.Args()[1]
 
-	logConfig := klog.Config{*debug, mountpoint}
+	logConfig := klog.Config{Debug: *debug, Mountpoint: mountpoint}
 	logger = klog.New("kwfs_main", logConfig)
 	defer logger.Close()
 
