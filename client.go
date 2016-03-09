@@ -53,10 +53,10 @@ type Client struct {
 
 // httpClientParams are values necessary for constructing a TLS client.
 type httpClientParams struct {
-	CertFile string        `json:"cert_file"`
-	KeyFile  string        `json:"key_file"`
-	CaBundle string        `json:"ca_bundle"`
-	Timeout  time.Duration `json:"timeout"`
+	CertFile string `json:"cert_file"`
+	KeyFile  string `json:"key_file"`
+	CaBundle string `json:"ca_bundle"`
+	timeout  time.Duration
 }
 
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
@@ -217,5 +217,5 @@ func (p httpClientParams) buildClient() (client *http.Client, err error) {
 	}
 	config.BuildNameToCertificate()
 	transport := &http.Transport{TLSClientConfig: config}
-	return &http.Client{Transport: transport, Timeout: p.Timeout}, nil
+	return &http.Client{Transport: transport, Timeout: p.timeout}, nil
 }

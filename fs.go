@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -50,7 +49,7 @@ type StatusInfo struct {
 	BuildTime      time.Time        `json:"build_time"`
 	StartTime      time.Time        `json:"start_time"`
 	RuntimeVersion string           `json:"runtime_version"`
-	ServerURL      *url.URL         `json:"server_url"`
+	ServerURL      string           `json:"server_url"`
 	ClientParams   httpClientParams `json:"client_params"`
 }
 
@@ -77,7 +76,7 @@ func (kwfs KeywhizFs) StatusJSON() []byte {
 			BuildTime:      time.Unix(seconds, 0),
 			StartTime:      kwfs.StartTime,
 			RuntimeVersion: runtime.Version(),
-			ServerURL:      kwfs.Client.url,
+			ServerURL:      kwfs.Client.url.String(),
 			ClientParams:   kwfs.Client.params,
 		})
 	panicOnError(err)
