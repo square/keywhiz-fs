@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -60,6 +61,7 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 	}{
 		{"", 4096, 0755 | fuse.S_IFDIR},
 		{".version", len(VERSION), 0444 | fuse.S_IFREG},
+		{".compiler", len(runtime.Version()), 0444 | fuse.S_IFREG},
 		{".running", -1, 0444 | fuse.S_IFREG},
 		{".clear_cache", 0, 0440 | fuse.S_IFREG},
 		{".json", 4096, 0700 | fuse.S_IFDIR},
@@ -119,6 +121,7 @@ func (suite *FsTestSuite) TestFileAttrOwnership() {
 		".json/secrets",
 		".running",
 		".version",
+		".compiler",
 		"hmac.key",
 	}
 
@@ -151,6 +154,10 @@ func (suite *FsTestSuite) TestSpecialFileOpen() {
 	file, status := suite.fs.Open(".version", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
 	assert.EqualValues(VERSION, read(file))
+
+	file, status = suite.fs.Open(".compiler", 0, fuseContext)
+	assert.Equal(fuse.OK, status)
+	assert.EqualValues(runtime.Version(), read(file))
 
 	file, status = suite.fs.Open(".clear_cache", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
@@ -225,6 +232,7 @@ func (suite *FsTestSuite) TestOpenDir() {
 			"",
 			map[string]bool{
 				".version":     true,
+				".compiler":    true,
 				".running":     true,
 				".clear_cache": true,
 				".json":        false,

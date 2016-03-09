@@ -1,8 +1,9 @@
 export GO15VENDOREXPERIMENT = 1
+REVISION := $(shell git describe --long --always --abbrev=8 HEAD)
 
 # Build
 build: depends
-	go build
+	go build -ldflags "-X main.VERSION='2.0-$(REVISION)'"
 
 # Dependencies
 depends:

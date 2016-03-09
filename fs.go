@@ -17,6 +17,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -69,6 +70,9 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	case name == ".version":
 		size := uint64(len(VERSION))
 		attr = kwfs.fileAttr(size, 0444)
+	case name == ".compiler":
+		size := uint64(len(runtime.Version()))
+		attr = kwfs.fileAttr(size, 0444)
 	case name == ".clear_cache":
 		attr = kwfs.fileAttr(0, 0440)
 	case name == ".running":
@@ -114,6 +118,8 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 		return nil, EISDIR
 	case name == ".version":
 		file = nodefs.NewDataFile([]byte(VERSION))
+	case name == ".compiler":
+		file = nodefs.NewDataFile([]byte(runtime.Version()))
 	case name == ".clear_cache":
 		file = nodefs.NewDevNullFile()
 	case name == ".running":
@@ -156,7 +162,8 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 			fuse.DirEntry{Name: ".clear_cache", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: ".json", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: ".running", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
+			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG},
+			fuse.DirEntry{Name: ".compiler", Mode: fuse.S_IFREG})
 	case ".json":
 		entries = []fuse.DirEntry{
 			fuse.DirEntry{Name: "secret", Mode: fuse.S_IFDIR},
