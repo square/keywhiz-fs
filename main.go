@@ -114,7 +114,10 @@ func main() {
 	go func() {
 		sig := <-c
 		logger.Warnf("Got signal %s, unmounting", sig)
-		server.Unmount()
+		err := server.Unmount()
+		if err != nil {
+			logger.Warnf("Error while unmounting: %v", err)
+		}
 	}()
 
 	// Setup metrics
@@ -134,6 +137,7 @@ func main() {
 	}
 
 	server.Serve()
+	logger.Infof("Exiting")
 }
 
 // Locks memory, preventing memory from being written to disk as swap
