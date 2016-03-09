@@ -16,16 +16,13 @@ package main
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
 )
 
 // fixture fully reads test data from a file in the fixtures/ subdirectory.
 func fixture(file string) (content []byte) {
 	content, err := ioutil.ReadFile("fixtures/" + file)
-	if err != nil {
-		panic(err)
-	}
+	panicOnError(err)
 	return
 }
 
@@ -33,9 +30,7 @@ func fixture(file string) (content []byte) {
 func testCerts(file string) (config *tls.Config) {
 	config = new(tls.Config)
 	cert, err := tls.LoadX509KeyPair(file, file)
-	if err != nil {
-		panic(fmt.Sprintf("keywhizfs_test TLS: %v", err))
-	}
+	panicOnError(err)
 
 	config.Certificates = []tls.Certificate{cert}
 

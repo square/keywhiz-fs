@@ -149,3 +149,10 @@ func lockMemory() {
 		log.Fatalf("Could not perform mlockall and prevent swapping memory: %v", err)
 	}
 }
+
+// Helper function to panic on error
+func panicOnError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}

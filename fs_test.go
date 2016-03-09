@@ -21,7 +21,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -60,8 +59,8 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 		mode     int
 	}{
 		{"", 4096, 0755 | fuse.S_IFDIR},
-		{".version", len(VERSION), 0444 | fuse.S_IFREG},
-		{".compiler", len(runtime.Version()), 0444 | fuse.S_IFREG},
+		{".version", len(fsVersion), 0444 | fuse.S_IFREG},
+		{".json/status", len(suite.fs.StatusJSON()), 0444 | fuse.S_IFREG},
 		{".running", -1, 0444 | fuse.S_IFREG},
 		{".clear_cache", 0, 0440 | fuse.S_IFREG},
 		{".json", 4096, 0700 | fuse.S_IFDIR},
@@ -121,7 +120,7 @@ func (suite *FsTestSuite) TestFileAttrOwnership() {
 		".json/secrets",
 		".running",
 		".version",
-		".compiler",
+		".json/status",
 		"hmac.key",
 	}
 
@@ -153,11 +152,11 @@ func (suite *FsTestSuite) TestSpecialFileOpen() {
 
 	file, status := suite.fs.Open(".version", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
-	assert.EqualValues(VERSION, read(file))
+	assert.EqualValues(fsVersion, read(file))
 
-	file, status = suite.fs.Open(".compiler", 0, fuseContext)
+	file, status = suite.fs.Open(".json/status", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
-	assert.EqualValues(runtime.Version(), read(file))
+	assert.EqualValues(suite.fs.StatusJSON(), read(file))
 
 	file, status = suite.fs.Open(".clear_cache", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
@@ -209,10 +208,10 @@ func (suite *FsTestSuite) TestOpenBadFiles() {
 		filename string
 		status   fuse.Status
 	}{
-		{"", EISDIR},
+		{"", fuseEISDIR},
 		{"non-existent", fuse.ENOENT},
 		{".json/secret/non-existent", fuse.ENOENT},
-		{".json/secret", EISDIR},
+		{".json/secret", fuseEISDIR},
 	}
 
 	for _, c := range cases {
@@ -232,7 +231,6 @@ func (suite *FsTestSuite) TestOpenDir() {
 			"",
 			map[string]bool{
 				".version":     true,
-				".compiler":    true,
 				".running":     true,
 				".clear_cache": true,
 				".json":        false,
@@ -243,6 +241,7 @@ func (suite *FsTestSuite) TestOpenDir() {
 		{
 			".json",
 			map[string]bool{
+				"status":  true,
 				"secret":  false,
 				"secrets": true,
 			},

@@ -15,9 +15,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,9 +32,27 @@ import (
 )
 
 const (
-	VERSION = "2.0"
-	EISDIR  = fuse.Status(unix.EISDIR)
+	fsVersion  = "2.0"
+	fuseEISDIR = fuse.Status(unix.EISDIR)
 )
+
+// Initialized via ldflags
+const (
+	buildRevision = "unknown"
+	buildTime     = "0"
+	buildMachine  = "unknown"
+)
+
+// StatusInfo contains debug info accessible via `.json/status`.
+type StatusInfo struct {
+	BuildRevision  string           `json:"build_revision"`
+	BuildMachine   string           `json:"build_machine"`
+	BuildTime      time.Time        `json:"build_time"`
+	StartTime      time.Time        `json:"start_time"`
+	RuntimeVersion string           `json:"runtime_version"`
+	ServerURL      *url.URL         `json:"server_url"`
+	ClientParams   httpClientParams `json:"client_params"`
+}
 
 // KeywhizFs is the central struct for dispatching filesystem operations.
 type KeywhizFs struct {
@@ -41,6 +62,26 @@ type KeywhizFs struct {
 	Cache     *Cache
 	StartTime time.Time
 	Ownership Ownership
+}
+
+func (kwfs KeywhizFs) StatusJSON() []byte {
+	// Convert buildTime (seconds since epoch) into an actual time.Time object,
+	// makes for nicer JSON marshalling (and matches mount time format).
+	seconds, err := strconv.ParseInt(buildTime, 10, 64)
+	panicOnError(err)
+
+	status, err := json.Marshal(
+		StatusInfo{
+			BuildRevision:  buildRevision,
+			BuildMachine:   buildMachine,
+			BuildTime:      time.Unix(seconds, 0),
+			StartTime:      kwfs.StartTime,
+			RuntimeVersion: runtime.Version(),
+			ServerURL:      kwfs.Client.url,
+			ClientParams:   kwfs.Client.params,
+		})
+	panicOnError(err)
+	return status
 }
 
 // NewKeywhizFs readies a KeywhizFs struct and its parent filesystem objects.
@@ -68,10 +109,7 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	case name == "": // Base directory
 		attr = kwfs.directoryAttr(1, 0755) // Writability necessary for .clear_cache
 	case name == ".version":
-		size := uint64(len(VERSION))
-		attr = kwfs.fileAttr(size, 0444)
-	case name == ".compiler":
-		size := uint64(len(runtime.Version()))
+		size := uint64(len(fsVersion))
 		attr = kwfs.fileAttr(size, 0444)
 	case name == ".clear_cache":
 		attr = kwfs.fileAttr(0, 0440)
@@ -80,6 +118,9 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 		attr = kwfs.fileAttr(size, 0444)
 	case name == ".json":
 		attr = kwfs.directoryAttr(1, 0700)
+	case name == ".json/status":
+		size := uint64(len(kwfs.StatusJSON()))
+		attr = kwfs.fileAttr(size, 0444)
 	case name == ".json/secret":
 		attr = kwfs.directoryAttr(0, 0700)
 	case name == ".json/secrets":
@@ -115,11 +156,11 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	var file nodefs.File
 	switch {
 	case name == "", name == ".json", name == ".json/secret":
-		return nil, EISDIR
+		return nil, fuseEISDIR
 	case name == ".version":
-		file = nodefs.NewDataFile([]byte(VERSION))
-	case name == ".compiler":
-		file = nodefs.NewDataFile([]byte(runtime.Version()))
+		file = nodefs.NewDataFile([]byte(fsVersion))
+	case name == ".json/status":
+		file = nodefs.NewDataFile(kwfs.StatusJSON())
 	case name == ".clear_cache":
 		file = nodefs.NewDevNullFile()
 	case name == ".running":
@@ -162,12 +203,12 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 			fuse.DirEntry{Name: ".clear_cache", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: ".json", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: ".running", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: ".compiler", Mode: fuse.S_IFREG})
+			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
 	case ".json":
 		entries = []fuse.DirEntry{
 			fuse.DirEntry{Name: "secret", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: "secrets", Mode: fuse.S_IFREG},
+			fuse.DirEntry{Name: "status", Mode: fuse.S_IFREG},
 		}
 	case ".json/secret":
 		entries = kwfs.secretsDirListing()

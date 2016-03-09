@@ -1,9 +1,15 @@
 export GO15VENDOREXPERIMENT = 1
-REVISION := $(shell git describe --long --always --abbrev=8 HEAD)
+
+BUILD_TIME := $(shell date +%s)
+BUILD_REVISION := $(shell git rev-parse --verify HEAD)
+BUILD_MACHINE := $(shell uname -mnrs)
 
 # Build
 build: depends
-	go build -ldflags "-X main.VERSION='2.0-$(REVISION)'"
+	go build -ldflags " \
+	  -X \"main.buildTime=$(BUILD_TIME)\" \
+	  -X \"main.buildRevision=$(BUILD_REVISION)\" \
+	  -X \"main.buildMachine=$(BUILD_MACHINE)\""
 
 # Dependencies
 depends:
