@@ -36,7 +36,7 @@ const (
 )
 
 // Initialized via ldflags
-const (
+var (
 	buildRevision = "unknown"
 	buildTime     = "0"
 	buildMachine  = "unknown"
