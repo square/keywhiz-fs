@@ -112,11 +112,13 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
-		sig := <-c
-		logger.Warnf("Got signal %s, unmounting", sig)
-		err := server.Unmount()
-		if err != nil {
-			logger.Warnf("Error while unmounting: %v", err)
+		for {
+			sig := <-c
+			logger.Warnf("Got signal %s, unmounting", sig)
+			err := server.Unmount()
+			if err != nil {
+				logger.Warnf("Error while unmounting: %v", err)
+			}
 		}
 	}()
 
