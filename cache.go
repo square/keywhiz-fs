@@ -252,3 +252,19 @@ func (c *Cache) backendSecretList() chan []Secret {
 	}()
 	return secretsc
 }
+
+// Ping backend on startup
+func (c *Cache) pingBackend() bool {
+	secrets, ok := c.backend.SecretList()
+	if !ok {
+		return false
+	}
+
+	newMap := NewSecretMap()
+	for _, backendSecret := range secrets {
+		newMap.Put(backendSecret.Name, backendSecret)
+	}
+
+	c.secretMap.Overwrite(newMap)
+	return true
+}
