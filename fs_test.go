@@ -44,7 +44,7 @@ type FsTestSuite struct {
 
 func (suite *FsTestSuite) SetupTest() {
 	timeouts := Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
-	client := NewClient(clientFile, clientFile, testCaFile, suite.url, timeouts.MaxWait, logConfig, false)
+	client := NewClient(clientFile, clientFile, testCaFile, suite.url, timeouts.MaxWait, logConfig)
 	ownership := Ownership{Uid: _SomeUID, Gid: _SomeUID}
 	kwfs, _, _ := NewKeywhizFs(&client, ownership, timeouts, logConfig)
 	suite.fs = kwfs

@@ -18,7 +18,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -61,7 +60,7 @@ type httpClientParams struct {
 
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
 // ca file with the list of trusted certificate authorities.
-func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config, ping bool) (client Client) {
+func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config) (client Client) {
 	logger := klog.New("kwfs_client", logConfig)
 	params := httpClientParams{certFile, keyFile, caFile, timeout}
 
@@ -94,14 +93,7 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 		}
 	}()
 
-	client = Client{logger, getClient, serverURL, params}
-	if ping {
-		if _, ok := client.SecretList(); !ok {
-			log.Fatalf("Failed startup /secrets ping to %v", client.url)
-		}
-	}
-
-	return client
+	return Client{logger, getClient, serverURL, params}
 }
 
 // RawSecret returns raw JSON from requesting a secret.

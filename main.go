@@ -87,7 +87,7 @@ func main() {
 	maxWait := clientTimeout + backendDeadline
 	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait}
 
-	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig, *ping)
+	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig)
 
 	ownership := NewOwnership(*asuser, *asgroup)
 	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, logConfig)
@@ -136,6 +136,16 @@ func main() {
 		}
 
 		sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
+	}
+
+	// Prime cache: we retrieve the initial secrets list right away, so that
+	// we can make sure we're ready to show contents as soon as we get mounted.
+	if *ping {
+		ok := kwfs.Cache.pingBackend()
+		if !ok {
+			fmt.Fprintf(os.Stderr, "unable to talk to backend")
+			os.Exit(1)
+		}
 	}
 
 	server.Serve()
