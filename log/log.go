@@ -53,8 +53,8 @@ func New(component string, config Config) *Logger {
 	syslogWriter, err := syslog.New(syslog.LOG_NOTICE|_DefaultSyslogFacility, name)
 	if err != nil {
 		errorLog.Printf("Error starting syslog logging, continuing: %v\n", err)
+		syslogWriter = nil
 	}
-	syslogWriter = nil
 
 	return &Logger{syslogWriter, errorLog, warnLog, infoLog, debugLog, config.Debug}
 }
