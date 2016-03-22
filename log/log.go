@@ -38,6 +38,7 @@ type Logger struct {
 type Config struct {
 	Debug      bool
 	Mountpoint string
+	Syslog     bool
 }
 
 // New initializes a Logger for a given component and with debugging output on/off.
@@ -50,12 +51,15 @@ func New(component string, config Config) *Logger {
 	infoLog := log.New(os.Stdout, fmt.Sprintf("INFO %v: ", name), flags)
 	debugLog := log.New(os.Stdout, fmt.Sprintf("DEBUG %v: ", name), flags)
 
-	syslogWriter, err := syslog.New(syslog.LOG_NOTICE|_DefaultSyslogFacility, name)
-	if err != nil {
-		errorLog.Printf("Error starting syslog logging, continuing: %v\n", err)
-		syslogWriter = nil
+	var syslogWriter *syslog.Writer = nil
+	if config.Syslog {
+		var err error
+		syslogWriter, err = syslog.New(syslog.LOG_NOTICE|_DefaultSyslogFacility, name)
+		if err != nil {
+			errorLog.Printf("Error starting syslog logging, continuing: %v\n", err)
+			syslogWriter = nil
+		}
 	}
-
 	return &Logger{syslogWriter, errorLog, warnLog, infoLog, debugLog, config.Debug}
 }
 
@@ -64,8 +68,9 @@ func (l Logger) Errorf(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	if l.syslog != nil {
 		l.syslog.Err(msg)
+	} else {
+		l.errorLog.Println(msg)
 	}
-	l.errorLog.Println(msg)
 }
 
 // Warnf emits messages at WARN level with a printf style interface.
@@ -73,8 +78,9 @@ func (l Logger) Warnf(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	if l.syslog != nil {
 		l.syslog.Warning(msg)
+	} else {
+		l.warnLog.Println(msg)
 	}
-	l.warnLog.Println(msg)
 }
 
 // Infof emits messages at INFO level with a printf style interface.
@@ -82,8 +88,9 @@ func (l Logger) Infof(format string, v ...interface{}) {
 	msg := fmt.Sprintf(format, v...)
 	if l.syslog != nil {
 		l.syslog.Info(msg)
+	} else {
+		l.infoLog.Println(msg)
 	}
-	l.infoLog.Println(msg)
 }
 
 // Debugf emits messages at DEBUG level with a printf style interface if debugging was enabled.
@@ -92,8 +99,9 @@ func (l Logger) Debugf(format string, v ...interface{}) {
 		msg := fmt.Sprintf(format, v...)
 		if l.syslog != nil {
 			l.syslog.Debug(msg)
+		} else {
+			l.debugLog.Println(msg)
 		}
-		l.debugLog.Println(msg)
 	}
 }
 
