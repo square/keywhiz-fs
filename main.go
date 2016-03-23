@@ -80,8 +80,8 @@ func main() {
 	lockMemory()
 
 	clientTimeout := time.Duration(*timeoutSeconds) * time.Second
-	freshThreshold := 200 * time.Millisecond
-	backendDeadline := 500 * time.Millisecond
+	freshThreshold := 1 * time.Hour
+	backendDeadline := 5 * time.Second
 	maxWait := clientTimeout + backendDeadline
 	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait}
 
