@@ -26,6 +26,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/square/go-sq-metrics"
 	"github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
 )
@@ -59,11 +60,12 @@ type KeywhizFs struct {
 	*log.Logger
 	Client    *Client
 	Cache     *Cache
+	Metrics   *sqmetrics.SquareMetrics
 	StartTime time.Time
 	Ownership Ownership
 }
 
-func (kwfs KeywhizFs) StatusJSON() []byte {
+func (kwfs KeywhizFs) statusJSON() []byte {
 	// Convert buildTime (seconds since epoch) into an actual time.Time object,
 	// makes for nicer JSON marshalling (and matches mount time format).
 	seconds, err := strconv.ParseInt(buildTime, 10, 64)
@@ -83,15 +85,27 @@ func (kwfs KeywhizFs) StatusJSON() []byte {
 	return status
 }
 
+func (kwfs KeywhizFs) metricsJSON() []byte {
+	if kwfs.Metrics != nil {
+		metrics := kwfs.Metrics.SerializeMetrics()
+		data, err := json.Marshal(metrics)
+		if err == nil {
+			return data
+		}
+		kwfs.Warnf("Error serializing metrics: %v", err)
+	}
+	return []byte{}
+}
+
 // NewKeywhizFs readies a KeywhizFs struct and its parent filesystem objects.
-func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, logConfig log.Config) (kwfs *KeywhizFs, root nodefs.Node, err error) {
+func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, metrics *sqmetrics.SquareMetrics, logConfig log.Config) (kwfs *KeywhizFs, root nodefs.Node, err error) {
 	logger := log.New("kwfs", logConfig)
 	cache := NewCache(client, timeouts, logConfig)
 
 	defaultfs := pathfs.NewDefaultFileSystem()            // Returns ENOSYS by default
 	readonlyfs := pathfs.NewReadonlyFileSystem(defaultfs) // R/W calls return EPERM
 
-	kwfs = &KeywhizFs{readonlyfs, logger, client, cache, time.Now(), ownership}
+	kwfs = &KeywhizFs{readonlyfs, logger, client, cache, metrics, time.Now(), ownership}
 	nfs := pathfs.NewPathNodeFs(kwfs, nil)
 	nfs.SetDebug(logConfig.Debug)
 	return kwfs, nfs.Root(), nil
@@ -118,7 +132,10 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	case name == ".json":
 		attr = kwfs.directoryAttr(1, 0700)
 	case name == ".json/status":
-		size := uint64(len(kwfs.StatusJSON()))
+		size := uint64(len(kwfs.statusJSON()))
+		attr = kwfs.fileAttr(size, 0444)
+	case name == ".json/metrics":
+		size := uint64(len(kwfs.metricsJSON()))
 		attr = kwfs.fileAttr(size, 0444)
 	case name == ".json/secret":
 		attr = kwfs.directoryAttr(0, 0700)
@@ -159,7 +176,9 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	case name == ".version":
 		file = nodefs.NewDataFile([]byte(fsVersion))
 	case name == ".json/status":
-		file = nodefs.NewDataFile(kwfs.StatusJSON())
+		file = nodefs.NewDataFile(kwfs.statusJSON())
+	case name == ".json/metrics":
+		file = nodefs.NewDataFile(kwfs.metricsJSON())
 	case name == ".clear_cache":
 		file = nodefs.NewDevNullFile()
 	case name == ".running":
@@ -205,6 +224,7 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
 	case ".json":
 		entries = []fuse.DirEntry{
+			fuse.DirEntry{Name: "metrics", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: "secret", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: "secrets", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: "status", Mode: fuse.S_IFREG},

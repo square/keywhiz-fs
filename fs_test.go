@@ -46,7 +46,7 @@ func (suite *FsTestSuite) SetupTest() {
 	timeouts := Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
 	client := NewClient(clientFile, clientFile, testCaFile, suite.url, timeouts.MaxWait, logConfig)
 	ownership := Ownership{Uid: _SomeUID, Gid: _SomeUID}
-	kwfs, _, _ := NewKeywhizFs(&client, ownership, timeouts, logConfig)
+	kwfs, _, _ := NewKeywhizFs(&client, ownership, timeouts, nil, logConfig)
 	suite.fs = kwfs
 }
 
@@ -60,7 +60,7 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 	}{
 		{"", 4096, 0755 | fuse.S_IFDIR},
 		{".version", len(fsVersion), 0444 | fuse.S_IFREG},
-		{".json/status", len(suite.fs.StatusJSON()), 0444 | fuse.S_IFREG},
+		{".json/status", len(suite.fs.statusJSON()), 0444 | fuse.S_IFREG},
 		{".running", -1, 0444 | fuse.S_IFREG},
 		{".clear_cache", 0, 0440 | fuse.S_IFREG},
 		{".json", 4096, 0700 | fuse.S_IFDIR},
@@ -156,7 +156,7 @@ func (suite *FsTestSuite) TestSpecialFileOpen() {
 
 	file, status = suite.fs.Open(".json/status", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
-	assert.EqualValues(suite.fs.StatusJSON(), read(file))
+	assert.EqualValues(suite.fs.statusJSON(), read(file))
 
 	file, status = suite.fs.Open(".clear_cache", 0, fuseContext)
 	assert.Equal(fuse.OK, status)
@@ -241,6 +241,7 @@ func (suite *FsTestSuite) TestOpenDir() {
 		{
 			".json",
 			map[string]bool{
+				"metrics": true,
 				"status":  true,
 				"secret":  false,
 				"secrets": true,

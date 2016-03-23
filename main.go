@@ -106,7 +106,7 @@ func main() {
 	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig)
 
 	ownership := NewOwnership(*asuser, *asgroup)
-	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, logConfig)
+	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, metricsHandle, logConfig)
 	if err != nil {
 		log.Fatalf("KeywhizFs init fail: %v\n", err)
 	}
