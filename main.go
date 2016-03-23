@@ -75,9 +75,24 @@ func main() {
 		certFile = keyFile
 	}
 
-	if *metricsURL != "" && !strings.HasPrefix(*metricsURL, "http://") && !strings.HasPrefix(*metricsURL, "https://") {
-		log.Fatalf("--metrics-url should start with http:// or https://")
-		os.Exit(1)
+	// Setup metrics
+	var metricsHandle *sqmetrics.SquareMetrics
+	if *metricsURL != "" {
+		if !strings.HasPrefix(*metricsURL, "http://") && !strings.HasPrefix(*metricsURL, "https://") {
+			log.Fatalf("--metrics-url should start with http:// or https://")
+			os.Exit(1)
+		}
+		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
+
+		var prefix string
+		if *metricsPrefix != "" {
+			prefix = *metricsPrefix
+		} else {
+			// By default, prefix metrics with escaped mount path. Replace slashes with - for easier aggregation
+			prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
+		}
+
+		metricsHandle = sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
 	}
 
 	lockMemory()
@@ -122,22 +137,6 @@ func main() {
 			}
 		}
 	}()
-
-	// Setup metrics
-	// Replace slashes with _ for easier aggregation
-	if *metricsURL != "" {
-		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
-
-		var prefix string
-		if *metricsPrefix != "" {
-			prefix = *metricsPrefix
-		} else {
-			// By default, prefix metrics with escaped mount path
-			prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
-		}
-
-		sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
-	}
 
 	// Prime cache: we retrieve the initial secrets list right away, so that
 	// we can make sure we're ready to show contents as soon as we get mounted.
