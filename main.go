@@ -43,6 +43,7 @@ var (
 	timeoutSeconds = flag.Uint("timeout", 20, "Timeout for communication with server")
 	metricsURL     = flag.String("metrics-url", "", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).")
 	metricsPrefix  = flag.String("metrics-prefix", "", "Override the default metrics prefix used for reporting metrics.")
+	syslog         = flag.Bool("syslog", false, "Send logs to syslog instead of stderr.")
 	logger         *klog.Logger
 )
 
@@ -65,7 +66,7 @@ func main() {
 	}
 	mountpoint := flag.Args()[1]
 
-	logConfig := klog.Config{Debug: *debug, Mountpoint: mountpoint}
+	logConfig := klog.Config{Debug: *debug, Mountpoint: mountpoint, Syslog: *syslog}
 	logger = klog.New("kwfs_main", logConfig)
 	defer logger.Close()
 
