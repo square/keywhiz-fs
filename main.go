@@ -75,10 +75,7 @@ func main() {
 		certFile = keyFile
 	}
 
-	if *metricsURL != "" && !strings.HasPrefix(*metricsURL, "http://") && !strings.HasPrefix(*metricsURL, "https://") {
-		log.Fatalf("--metrics-url should start with http:// or https://")
-		os.Exit(1)
-	}
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, mountpoint)
 
 	lockMemory()
 
@@ -91,7 +88,7 @@ func main() {
 	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig)
 
 	ownership := NewOwnership(*asuser, *asgroup)
-	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, logConfig)
+	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, metricsHandle, logConfig)
 	if err != nil {
 		log.Fatalf("KeywhizFs init fail: %v\n", err)
 	}
@@ -123,22 +120,6 @@ func main() {
 		}
 	}()
 
-	// Setup metrics
-	// Replace slashes with _ for easier aggregation
-	if *metricsURL != "" {
-		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
-
-		var prefix string
-		if *metricsPrefix != "" {
-			prefix = *metricsPrefix
-		} else {
-			// By default, prefix metrics with escaped mount path
-			prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
-		}
-
-		sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
-	}
-
 	// Prime cache: we retrieve the initial secrets list right away, so that
 	// we can make sure we're ready to show contents as soon as we get mounted.
 	if *ping {
@@ -151,6 +132,27 @@ func main() {
 
 	server.Serve()
 	logger.Infof("Exiting")
+}
+
+// Setup metrics
+func setupMetrics(metricsURL *string, metricsPrefix *string, mountpoint string) *sqmetrics.SquareMetrics {
+	if *metricsURL != "" {
+		if !strings.HasPrefix(*metricsURL, "http://") && !strings.HasPrefix(*metricsURL, "https://") {
+			log.Fatalf("--metrics-url should start with http:// or https://")
+			os.Exit(1)
+		}
+		log.Printf("metrics enabled; reporting metrics via POST to %s", *metricsURL)
+	}
+
+	var prefix string
+	if *metricsPrefix != "" {
+		prefix = *metricsPrefix
+	} else {
+		// By default, prefix metrics with escaped mount path. Replace slashes with - for easier aggregation
+		prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
+	}
+
+	return sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
 }
 
 // Locks memory, preventing memory from being written to disk as swap
