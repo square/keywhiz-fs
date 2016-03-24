@@ -51,18 +51,6 @@ func (m *SecretMap) Put(key string, value Secret) {
 	m.lock.Unlock()
 }
 
-// PutIfAbsent places a value in the map with a key, if that key did not exist.
-// Returns whether the value was placed.
-func (m *SecretMap) PutIfAbsent(key string, value Secret) (put bool) {
-	m.lock.Lock()
-	if _, ok := m.m[key]; !ok {
-		m.m[key] = SecretTime{value, time.Now()}
-		put = true
-	}
-	m.lock.Unlock()
-	return
-}
-
 // Values returns a slice of stored secrets in no particular order.
 func (m *SecretMap) Values() []SecretTime {
 	m.lock.RLock()
