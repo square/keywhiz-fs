@@ -106,7 +106,7 @@ func main() {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
 
-	// Catch SIGINT and SIGKILL and exit cleanly.
+	// Catch SIGINT and exit cleanly.
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
 	go func() {
