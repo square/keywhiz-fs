@@ -1,5 +1,7 @@
-export GO15VENDOREXPERIMENT = 1		# Required for vendoring
-export CGO_ENABLED = 1						# Required for os/user to work on cross-compile
+# Required for vendoring
+export GO15VENDOREXPERIMENT = 1
+# Required for os/user to work on cross-compile
+export CGO_ENABLED = 1
 
 BUILD_TIME := $(shell date +%s)
 BUILD_REVISION := $(shell git rev-parse --verify HEAD)
