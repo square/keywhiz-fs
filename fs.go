@@ -224,10 +224,10 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
 	case ".json":
 		entries = []fuse.DirEntry{
-			fuse.DirEntry{Name: "metrics", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: "secret", Mode: fuse.S_IFDIR},
-			fuse.DirEntry{Name: "secrets", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: "status", Mode: fuse.S_IFREG},
+			{Name: "metrics", Mode: fuse.S_IFREG},
+			{Name: "secret", Mode: fuse.S_IFDIR},
+			{Name: "secrets", Mode: fuse.S_IFREG},
+			{Name: "status", Mode: fuse.S_IFREG},
 		}
 	case ".json/secret":
 		entries = kwfs.secretsDirListing()
