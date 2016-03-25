@@ -15,10 +15,13 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"log"
 	"os"
 	"os/user"
 	"strconv"
+	"strings"
 )
 
 // Ownership indicates the default ownership of filesystem entries.
@@ -54,17 +57,34 @@ func lookupUid(username string) uint32 {
 
 // lookupGid resolves a groupname to a numeric id. Current egid is returned on failure.
 func lookupGid(groupname string) uint32 {
-	g, err := user.Lookup(groupname)
+	file, err := os.Open("/etc/group")
+	if err != nil {
+		log.Printf("Error resolving gid for %v: %v\n", groupname, err)
+		return uint32(os.Getegid())
+	}
+	defer file.Close()
+
+	gid, err := lookupGidInFile(groupname, file)
 	if err != nil {
 		log.Printf("Error resolving gid for %v: %v\n", groupname, err)
 		return uint32(os.Getegid())
 	}
 
-	gid, err := strconv.ParseUint(g.Gid, 10 /* base */, 32 /* bits */)
-	if err != nil {
-		log.Printf("Error resolving gid for %v: %v\n", groupname, err)
-		return uint32(os.Getegid())
+	return gid
+}
+
+func lookupGidInFile(groupname string, file *os.File) (uint32, error) {
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		entry := strings.Split(scanner.Text(), ":")
+		if entry[0] == groupname && len(entry) >= 3 {
+			gid, err := strconv.ParseUint(entry[2], 10 /* base */, 32 /* bits */)
+			if err != nil {
+				return 0, err
+			}
+			return uint32(gid), nil
+		}
 	}
 
-	return uint32(gid)
+	return 0, errors.New("no such group")
 }

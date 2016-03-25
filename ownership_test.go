@@ -15,6 +15,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,4 +24,18 @@ import (
 func TestOwnershipInvalidUser(t *testing.T) {
 	ownership := NewOwnership("invalid", "invalid")
 	assert.NotNil(t, ownership, "should never return nil")
+}
+
+func TestGroupFileParsingValid(t *testing.T) {
+	file, err := ioutil.TempFile("", "keywhiz-fs-test")
+	panicOnError(err)
+
+	_, err = file.WriteString("test:x:1234:test0,test1\n")
+	panicOnError(err)
+	file.Sync()
+	file.Seek(0, 0)
+
+	gid, err := lookupGidInFile("test", file)
+	assert.Nil(t, err)
+	assert.EqualValues(t, 1234, gid)
 }
