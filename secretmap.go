@@ -22,7 +22,7 @@ import (
 // SecretMap is a thread-safe map for storing key -> secret mapping.
 type SecretMap struct {
 	m    map[string]SecretTime
-	lock sync.RWMutex
+	lock sync.Mutex
 }
 
 // SecretTime contains a Secret record along with a timestamp when it was inserted.
@@ -33,41 +33,45 @@ type SecretTime struct {
 
 // NewSecretMap initializes a new SecretMap.
 func NewSecretMap() *SecretMap {
-	return &SecretMap{make(map[string]SecretTime), sync.RWMutex{}}
+	return &SecretMap{make(map[string]SecretTime), sync.Mutex{}}
 }
 
 // Get retrieves a values from the map and indicates if the lookup was ok.
 func (m *SecretMap) Get(key string) (s SecretTime, ok bool) {
-	m.lock.RLock()
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	s, ok = m.m[key]
-	m.lock.RUnlock()
 	return
 }
 
 // Put places a value in the map with a key, possibly overwriting an existing entry.
 func (m *SecretMap) Put(key string, value Secret) {
 	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	m.m[key] = SecretTime{value, time.Now()}
-	m.lock.Unlock()
 }
 
 // Values returns a slice of stored secrets in no particular order.
 func (m *SecretMap) Values() []SecretTime {
-	m.lock.RLock()
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	values := make([]SecretTime, len(m.m))
 	i := 0
 	for _, value := range m.m {
 		values[i] = value
 		i++
 	}
-	m.lock.RUnlock()
 	return values
 }
 
 // Len returns the count of values stored.
 func (m *SecretMap) Len() int {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	return len(m.m)
 }
 
@@ -75,7 +79,7 @@ func (m *SecretMap) Len() int {
 func (m *SecretMap) Overwrite(m2 *SecretMap) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	m2.lock.RLock()
-	defer m2.lock.RUnlock()
+	m2.lock.Lock()
+	defer m2.lock.Unlock()
 	m.m = m2.m
 }
