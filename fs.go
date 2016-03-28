@@ -147,8 +147,8 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
 		name = name[len(".json/secret/"):]
-		data, ok := kwfs.Client.RawSecret(name)
-		if ok {
+		data, err := kwfs.Client.RawSecret(name)
+		if err == nil {
 			size := uint64(len(data))
 			attr = kwfs.fileAttr(size, 0400)
 		}
@@ -190,8 +190,8 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
 		name = name[len(".json/secret/"):]
-		data, ok := kwfs.Client.RawSecret(name)
-		if ok {
+		data, err := kwfs.Client.RawSecret(name)
+		if err == nil {
 			file = nodefs.NewDataFile(data)
 			kwfs.Infof("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
 		}

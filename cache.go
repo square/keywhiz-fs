@@ -22,7 +22,7 @@ import (
 
 // SecretBackend represents an interface for storing secrets.
 type SecretBackend interface {
-	Secret(string) (secret *Secret, ok bool)
+	Secret(string) (secret *Secret, err error)
 	SecretList() (secretList []Secret, ok bool)
 }
 
@@ -51,14 +51,20 @@ type Cache struct {
 	now       func() time.Time
 }
 
+type secretResult struct {
+	secret *Secret
+	err    error
+}
+
 // NewCache initializes a Cache.
 func NewCache(backend SecretBackend, timeouts Timeouts, logConfig log.Config, now func() time.Time) *Cache {
 	logger := log.New("kwfs_cache", logConfig)
 	return &Cache{logger, NewSecretMap(timeouts, now), backend, timeouts, now}
 }
 
-// Clear empties the internal cache.
-// TODO: creating a new SecretMap won't honor the delayed deletion contract.
+// Clear empties the internal cache. This function does not honor the
+// delayed deletion contract. The function is called when the user deletes
+// .clear_cache.
 func (c *Cache) Clear() {
 	c.Infof("Cache cleared")
 	c.secretMap = NewSecretMap(c.timeouts, c.now)
@@ -70,6 +76,7 @@ func (c *Cache) Clear() {
 //  * If cache hit and very recent: return cache entry
 //  * Ask backend w/ timeout
 //  * If backend returns fast: update cache, return
+//  * If backend returns deleted: set delayed deletion, return data from cache
 //  * If timeout_backend_deadline AND cache hit: return cache entry, background update cache when
 //    backend returns
 //  * If timeout_max_wait: log error and pretend file doesn't exist
@@ -84,16 +91,19 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 	}
 
 	cacheDone := c.cacheSecret(name)
-	var backendDone chan *Secret
+	var backendDone chan secretResult
 
 	for {
 		select {
 		case s := <-backendDone:
 			backendDone = nil
-			if s != nil { // Always return successful value from backend
-				return s, true
+			if s.err == nil {
+				// Always return successful value from backend
+				return s.secret, true
 			}
-
+			if _, ok := s.err.(SecretDeleted); ok {
+				c.secretMap.Delete(name)
+			}
 			// Backend failed and cache lookup already finished
 			if cacheDone == nil {
 				return resultFromCache()
@@ -211,18 +221,15 @@ func (c *Cache) cacheSecretList() chan []Secret {
 //
 // Retrieval is concurrent, so a channel is returned to communicate a successful value. The channel
 // will not be fulfilled on error.
-func (c *Cache) backendSecret(name string) chan *Secret {
-	secretc := make(chan *Secret)
+func (c *Cache) backendSecret(name string) chan secretResult {
+	secretc := make(chan secretResult)
 	go func() {
 		defer close(secretc)
-		secret, ok := c.backend.Secret(name)
-		if !ok {
-			secretc <- nil
-			return
+		secret, err := c.backend.Secret(name)
+		secretc <- secretResult{secret, err}
+		if err == nil {
+			c.secretMap.Put(name, *secret)
 		}
-
-		secretc <- secret
-		c.secretMap.Put(name, *secret)
 	}()
 	return secretc
 }
@@ -236,24 +243,31 @@ func (c *Cache) backendSecretList() chan []Secret {
 	go func() {
 		secrets, ok := c.backend.SecretList()
 		if !ok {
+			// Don't close the channel so that we use the result from the cache.
 			return
 		}
 
+		// Create a copy of the current map and mark all the elements as deleted.
+		newMap := NewSecretMap(c.timeouts, c.now)
+		newMap.Overwrite(c.secretMap)
+		newMap.DeleteAll()
+
+		// Put all the latest information
+		for _, backendSecret := range secrets {
+			newMap.Put(backendSecret.Name, backendSecret)
+		}
+
+		// TODO: this code isn't concurrency safe! We could write it so that in the worst case a secret gets marked as deleted instead of
+		// getting dropped on the floor.
+		c.secretMap.Overwrite(newMap)
+
+		values := c.secretMap.Values()
+		secrets = make([]Secret, len(values))
+		for i, v := range values {
+			secrets[i] = v.Secret
+		}
 		secretsc <- secrets
 		close(secretsc)
-
-		// TODO: handle delayed deletion
-		newMap := NewSecretMap(c.timeouts, c.now)
-
-		for _, backendSecret := range secrets {
-			// If the cache contains a secret with content, keep it over backendSecret.
-			if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
-				newMap.Put(backendSecret.Name, s.Secret)
-			} else { // Otherwise, cache the latest information.
-				newMap.Put(backendSecret.Name, backendSecret)
-			}
-		}
-		c.secretMap.Overwrite(newMap)
 	}()
 	return secretsc
 }
@@ -266,12 +280,15 @@ func (c *Cache) pingBackend() bool {
 		return false
 	}
 
-	// TODO: handle delayed deletion
+	// Create a copy of the current map and mark all the elements as deleted.
 	newMap := NewSecretMap(c.timeouts, c.now)
+	newMap.Overwrite(c.secretMap)
+	newMap.DeleteAll()
 	for _, backendSecret := range secrets {
 		newMap.Put(backendSecret.Name, backendSecret)
 	}
-
+	// TODO: this code isn't concurrency safe! We could write it so that in the worst case a secret gets marked as deleted instead of
+	// getting dropped on the floor.
 	c.secretMap.Overwrite(newMap)
 	return true
 }

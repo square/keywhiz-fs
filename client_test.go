@@ -59,13 +59,17 @@ func TestClientCallsServer(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(fixture("secrets.json"), data)
 
-	secret, ok := client.Secret("foo")
-	assert.True(ok)
+	secret, err := client.Secret("foo")
+	assert.Nil(err)
 	assert.Equal("Nobody_PgPass", secret.Name)
 
-	data, ok = client.RawSecret("foo")
-	assert.True(ok)
+	data, err = client.RawSecret("foo")
+	assert.Nil(err)
 	assert.Equal(fixture("secret.json"), data)
+
+	_, err = client.Secret("unexisting")
+	_, deleted := err.(SecretDeleted)
+	assert.True(deleted)
 }
 
 func TestClientRefresh(t *testing.T) {
@@ -109,20 +113,26 @@ func TestClientCallsServerErrors(t *testing.T) {
 	data, ok := client.RawSecretList()
 	assert.False(ok)
 
-	secret, ok := client.Secret("bar")
+	secret, err := client.Secret("bar")
 	assert.Nil(secret)
-	assert.False(ok)
+	_, deleted := err.(SecretDeleted)
+	assert.True(deleted)
 
-	data, ok = client.RawSecret("bar")
+	data, err = client.RawSecret("bar")
 	assert.Nil(data)
-	assert.False(ok)
+	_, deleted = err.(SecretDeleted)
+	assert.True(deleted)
 
-	data, ok = client.RawSecret("500-error")
+	data, err = client.RawSecret("500-error")
 	assert.Nil(data)
-	assert.False(ok)
+	assert.True(err != nil)
+	_, deleted = err.(SecretDeleted)
+	assert.False(deleted)
 
-	_, ok = client.Secret("non-existent")
-	assert.False(ok)
+	_, err = client.Secret("non-existent")
+	assert.Nil(data)
+	_, deleted = err.(SecretDeleted)
+	assert.True(deleted)
 }
 
 func TestClientParsingError(t *testing.T) {
