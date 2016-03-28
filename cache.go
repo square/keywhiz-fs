@@ -37,6 +37,8 @@ type Timeouts struct {
 	// until resorting to cached data.
 	BackendDeadline time.Duration
 	MaxWait         time.Duration
+	// Controls how long to keep a deleted entry before purging it.
+	DeletionDelay time.Duration
 }
 
 // Cache contains necessary state to return secrets, using previously cached content or retrieving

@@ -83,7 +83,8 @@ func main() {
 	freshThreshold := 1 * time.Hour
 	backendDeadline := 5 * time.Second
 	maxWait := clientTimeout + backendDeadline
-	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait}
+	delayDeletion := 1 * time.Hour
+	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait, delayDeletion}
 
 	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig)
 

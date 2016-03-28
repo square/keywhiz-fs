@@ -52,7 +52,7 @@ func (b ChannelBackend) SecretList() ([]Secret, bool) {
 	return secretList, true
 }
 
-var timeouts = Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond}
+var timeouts = Timeouts{0, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
 
 func TestCacheSecretUsesValuesFromClient(t *testing.T) {
 	assert := assert.New(t)
@@ -106,7 +106,7 @@ func TestCacheSecretWhenClientTimesOut(t *testing.T) {
 
 func TestCacheAndBackendTimeout(t *testing.T) {
 	assert := assert.New(t)
-	timeouts := Timeouts{0, 1 * time.Hour, 0}
+	timeouts := Timeouts{0, 1 * time.Hour, 0, 1 * time.Hour}
 
 	backend := ChannelBackend{} // channels are nil and will block
 	cache := NewCache(backend, timeouts, logConfig)
@@ -151,7 +151,7 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 	secretc <- fixture1
 
 	// 1 Hour fresh threshold is sure to be fresh
-	timeouts := Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond}
+	timeouts := Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
 	cache := NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 
@@ -163,7 +163,7 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 	assert.Equal(fixture2, secret)
 
 	// 1 Nanosecond fresh threshold is sure to make a server request
-	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond}
+	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
 	cache = NewCache(backend, timeouts, logConfig)
 	cache.Add(*fixture2)
 	time.Sleep(2 * time.Nanosecond)
