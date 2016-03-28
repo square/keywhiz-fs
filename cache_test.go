@@ -63,7 +63,7 @@ func TestCacheSecretUsesValuesFromClient(t *testing.T) {
 	backend := ChannelBackend{secretc: secretc}
 	secretc <- secretFixture
 
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 	secret, ok := cache.Secret("password-file")
 	assert.True(ok)
 	assert.Equal(secretFixture, secret)
@@ -74,7 +74,7 @@ func TestCachePassesThroughSecretNotFound(t *testing.T) {
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	cache := NewCache(FailingBackend{}, timeouts, logConfig)
+	cache := NewCache(FailingBackend{}, timeouts, logConfig, nil)
 	secret, ok := cache.Secret(secretFixture.Name)
 	assert.False(ok)
 	assert.Nil(secret)
@@ -90,7 +90,7 @@ func TestCacheSecretWhenClientTimesOut(t *testing.T) {
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	backend := ChannelBackend{} // channels are nil and will block
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 
 	// empty cache
 	secret, ok := cache.Secret(secretFixture.Name)
@@ -109,7 +109,7 @@ func TestCacheAndBackendTimeout(t *testing.T) {
 	timeouts := Timeouts{0, 1 * time.Hour, 0, 1 * time.Hour}
 
 	backend := ChannelBackend{} // channels are nil and will block
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 
 	// everything times out, should get empty list
 	list := cache.SecretList()
@@ -127,7 +127,7 @@ func TestCacheSecretUsesClientOverCache(t *testing.T) {
 	backend := ChannelBackend{secretc: secretc}
 	secretc <- fixture1
 
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 	cache.Add(*fixture2)
 
 	// Although fixture2 is in the cache, the client returns fixture1.
@@ -152,7 +152,7 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 
 	// 1 Hour fresh threshold is sure to be fresh
 	timeouts := Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 	cache.Add(*fixture2)
 
 	secret, ok := cache.Secret(fixture2.Name)
@@ -164,7 +164,7 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 
 	// 1 Nanosecond fresh threshold is sure to make a server request
 	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
-	cache = NewCache(backend, timeouts, logConfig)
+	cache = NewCache(backend, timeouts, logConfig, nil)
 	cache.Add(*fixture2)
 	time.Sleep(2 * time.Nanosecond)
 
@@ -178,7 +178,7 @@ func TestCacheSecretListUsesValuesFromCacheIfClientFails(t *testing.T) {
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
-	cache := NewCache(FailingBackend{}, timeouts, logConfig)
+	cache := NewCache(FailingBackend{}, timeouts, logConfig, nil)
 	cache.Add(*secretFixture)
 	list := cache.SecretList()
 	assert.Len(list, 1)
@@ -190,7 +190,7 @@ func TestCacheSecretListWhenClientTimesOut(t *testing.T) {
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	backend := ChannelBackend{} // channels are nil and will block
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 
 	// cache empty
 	list := cache.SecretList()
@@ -212,7 +212,7 @@ func TestCacheSecretListUsesValuesFromClient(t *testing.T) {
 	backend := ChannelBackend{secretListc: secretListc}
 	secretListc <- []Secret{*secretFixture}
 
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 	list := cache.SecretList()
 	assert.Len(list, 1)
 	assert.Contains(list, *secretFixture)
@@ -230,7 +230,7 @@ func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 	backend := ChannelBackend{secretListc: secretListc}
 	secretListc <- []Secret{*fixture1}
 
-	cache := NewCache(backend, timeouts, logConfig)
+	cache := NewCache(backend, timeouts, logConfig, nil)
 	cache.Add(*fixture2)
 
 	// Although fixture2 is in the cache, the client says only fixture1 available.
@@ -244,7 +244,7 @@ func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 func TestCacheClears(t *testing.T) {
 	assert := assert.New(t)
 
-	cache := NewCache(nil, timeouts, logConfig)
+	cache := NewCache(nil, timeouts, logConfig, nil)
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 	cache.Add(*secretFixture)

@@ -100,7 +100,7 @@ func (kwfs KeywhizFs) metricsJSON() []byte {
 // NewKeywhizFs readies a KeywhizFs struct and its parent filesystem objects.
 func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, metrics *sqmetrics.SquareMetrics, logConfig log.Config) (kwfs *KeywhizFs, root nodefs.Node, err error) {
 	logger := log.New("kwfs", logConfig)
-	cache := NewCache(client, timeouts, logConfig)
+	cache := NewCache(client, timeouts, logConfig, nil)
 
 	defaultfs := pathfs.NewDefaultFileSystem()            // Returns ENOSYS by default
 	readonlyfs := pathfs.NewReadonlyFileSystem(defaultfs) // R/W calls return EPERM

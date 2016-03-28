@@ -48,18 +48,20 @@ type Cache struct {
 	secretMap *SecretMap
 	backend   SecretBackend
 	timeouts  Timeouts
+	now       func() time.Time
 }
 
 // NewCache initializes a Cache.
-func NewCache(backend SecretBackend, timeouts Timeouts, logConfig log.Config) *Cache {
+func NewCache(backend SecretBackend, timeouts Timeouts, logConfig log.Config, now func() time.Time) *Cache {
 	logger := log.New("kwfs_cache", logConfig)
-	return &Cache{logger, NewSecretMap(), backend, timeouts}
+	return &Cache{logger, NewSecretMap(timeouts, now), backend, timeouts, now}
 }
 
 // Clear empties the internal cache.
+// TODO: creating a new SecretMap won't honor the delayed deletion contract.
 func (c *Cache) Clear() {
 	c.Infof("Cache cleared")
-	c.secretMap = NewSecretMap()
+	c.secretMap = NewSecretMap(c.timeouts, c.now)
 }
 
 // Secret retrieves a Secret by name from cache or a server.
@@ -240,7 +242,8 @@ func (c *Cache) backendSecretList() chan []Secret {
 		secretsc <- secrets
 		close(secretsc)
 
-		newMap := NewSecretMap()
+		// TODO: handle delayed deletion
+		newMap := NewSecretMap(c.timeouts, c.now)
 
 		for _, backendSecret := range secrets {
 			// If the cache contains a secret with content, keep it over backendSecret.
@@ -256,13 +259,15 @@ func (c *Cache) backendSecretList() chan []Secret {
 }
 
 // Ping backend on startup
+// TODO: convert this to a regular ping
 func (c *Cache) pingBackend() bool {
 	secrets, ok := c.backend.SecretList()
 	if !ok {
 		return false
 	}
 
-	newMap := NewSecretMap()
+	// TODO: handle delayed deletion
+	newMap := NewSecretMap(c.timeouts, c.now)
 	for _, backendSecret := range secrets {
 		newMap.Put(backendSecret.Name, backendSecret)
 	}

@@ -16,6 +16,7 @@ package main
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -26,7 +27,9 @@ func TestSecretMapOperations(t *testing.T) {
 	s, err := ParseSecret(fixture("secret.json"))
 	assert.NoError(err)
 
-	secretMap := NewSecretMap()
+	fake_now := time.Now()
+
+	secretMap := NewSecretMap(timeouts, func() time.Time { return fake_now })
 	assert.Equal(0, secretMap.Len())
 	assert.Empty(secretMap.Values())
 
@@ -49,6 +52,18 @@ func TestSecretMapOperations(t *testing.T) {
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.NotEqual(*s, lookup.Secret)
+
+	// Put a secret
+	secretMap.Put("foo", *s)
+	secretMap.DeleteAll()
+	// Secret should still exist for a short amount of time
+	values = secretMap.Values()
+	assert.Len(values, 1)
+	assert.Equal(*s, values[0].Secret)
+	// Advance current time by more than an hour, secret should now be gone
+	fake_now = fake_now.Add(2 * time.Hour)
+	values = secretMap.Values()
+	assert.Len(values, 0)
 }
 
 func TestSecretMapOverwrite(t *testing.T) {
@@ -57,10 +72,10 @@ func TestSecretMapOverwrite(t *testing.T) {
 	s, err := ParseSecret(fixture("secret.json"))
 	assert.NoError(err)
 
-	secretMap := NewSecretMap()
+	secretMap := NewSecretMap(timeouts, nil)
 	secretMap.Put("foo", Secret{})
 
-	newMap := NewSecretMap()
+	newMap := NewSecretMap(timeouts, nil)
 	newMap.Put("bar", *s)
 	secretMap.Overwrite(newMap)
 
@@ -73,7 +88,7 @@ func TestSecretMapOverwrite(t *testing.T) {
 func TestSecretMapTimestamp(t *testing.T) {
 	assert := assert.New(t)
 
-	secretMap := NewSecretMap()
+	secretMap := NewSecretMap(timeouts, nil)
 	secretMap.Put("foo", Secret{})
 
 	val, ok := secretMap.Get("foo")
