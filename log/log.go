@@ -51,7 +51,7 @@ func New(component string, config Config) *Logger {
 	infoLog := log.New(os.Stdout, fmt.Sprintf("INFO %v: ", name), flags)
 	debugLog := log.New(os.Stdout, fmt.Sprintf("DEBUG %v: ", name), flags)
 
-	var syslogWriter *syslog.Writer = nil
+	var syslogWriter *syslog.Writer
 	if config.Syslog {
 		var err error
 		syslogWriter, err = syslog.New(syslog.LOG_NOTICE|_DefaultSyslogFacility, name)
