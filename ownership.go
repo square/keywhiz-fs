@@ -24,6 +24,8 @@ import (
 	"strings"
 )
 
+var groupFile = "/etc/group"
+
 // Ownership indicates the default ownership of filesystem entries.
 type Ownership struct {
 	Uid uint32
@@ -57,7 +59,7 @@ func lookupUid(username string) uint32 {
 
 // lookupGid resolves a groupname to a numeric id. Current egid is returned on failure.
 func lookupGid(groupname string) uint32 {
-	file, err := os.Open("/etc/group")
+	file, err := os.Open(groupFile)
 	if err != nil {
 		log.Printf("Error resolving gid for %v: %v\n", groupname, err)
 		return uint32(os.Getegid())
