@@ -247,20 +247,23 @@ func (c *Cache) backendSecretList() chan []Secret {
 			return
 		}
 
-		// Create a copy of the current map and mark all the elements as deleted.
 		newMap := NewSecretMap(c.timeouts, c.now)
-		newMap.Overwrite(c.secretMap)
-		newMap.DeleteAll()
-
-		// Put all the latest information
 		for _, backendSecret := range secrets {
-			newMap.Put(backendSecret.Name, backendSecret)
+			// If the backend didn't return any content and the cache contains a secret with content, keep it
+			// and don't schedule it for delayed deletion.
+			if len(backendSecret.Content) == 0 {
+				if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
+					newMap.Put(backendSecret.Name, s.Secret)
+				} else { // Otherwise, cache the latest information.
+					newMap.Put(backendSecret.Name, backendSecret)
+				}
+			} else {
+				newMap.Put(backendSecret.Name, backendSecret)
+			}
 		}
+		c.secretMap.Replace(newMap)
 
-		// TODO: this code isn't concurrency safe! We could write it so that in the worst case a secret gets marked as deleted instead of
-		// getting dropped on the floor.
-		c.secretMap.Overwrite(newMap)
-
+		// TODO: copy-pasta from cacheSecretList(), should refactor.
 		values := c.secretMap.Values()
 		secrets = make([]Secret, len(values))
 		for i, v := range values {

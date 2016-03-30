@@ -103,6 +103,28 @@ func (m *SecretMap) DeleteAll() {
 	}
 }
 
+// Similar to Overwrite, but keeps all the keys which aren't in m2 and marks them for delayed deletion.
+func (m *SecretMap) Replace(m2 *SecretMap) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m2.lock.Lock()
+	defer m2.lock.Unlock()
+
+	// Delete existing entries
+	expire := m.getNow().Add(m.timeouts.DeletionDelay)
+	for k, v := range m.m {
+		if v.ttl.IsZero() {
+			v.ttl = expire
+		}
+		m.m[k] = v
+	}
+
+	// Replace values with data from m2
+	for k, v := range m2.m {
+		m.m[k] = v
+	}
+}
+
 // Values returns a slice of stored secrets in no particular order.
 func (m *SecretMap) Values() []SecretTime {
 	m.lock.Lock()
