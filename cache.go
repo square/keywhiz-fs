@@ -249,15 +249,18 @@ func (c *Cache) backendSecretList() chan []Secret {
 
 		newMap := NewSecretMap(c.timeouts, c.now)
 		for _, backendSecret := range secrets {
-			// If the backend didn't return any content and the cache contains a secret with content, keep it
-			// and don't schedule it for delayed deletion.
 			if len(backendSecret.Content) == 0 {
+				// The backend didn't return any content. The cache might contain a secret with content, in
+				// which case we want to keep the cache's value (and not schedule it for delayed deletion).
 				if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
 					newMap.Put(backendSecret.Name, s.Secret)
-				} else { // Otherwise, cache the latest information.
+				} else {
+					// We don't have content for this secret. TODO: explain under what circumstances this
+					// can happen.
 					newMap.Put(backendSecret.Name, backendSecret)
 				}
 			} else {
+				// Cache the latest info.
 				newMap.Put(backendSecret.Name, backendSecret)
 			}
 		}

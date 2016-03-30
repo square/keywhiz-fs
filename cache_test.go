@@ -339,3 +339,35 @@ func TestCacheClears(t *testing.T) {
 	cache.Clear()
 	assert.Equal(0, cache.Len())
 }
+
+func TestCacheSecretListDoesNotOverrideWithEmptyContent(t *testing.T) {
+	assert := assert.New(t)
+
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
+
+	secretListc := make(chan []Secret, 1)
+	backend := ChannelBackend{secretListc: secretListc}
+
+	cache := NewCache(backend, timeouts, logConfig, nil)
+	cache.Add(*secretFixture)
+
+	// Secret list should not override the cache entry with an empty value
+	secretFixtureWithNoData, _ := ParseSecret(fixture("secret.json"))
+	secretFixtureWithNoData.Content = content{}
+	secretListc <- []Secret{*secretFixtureWithNoData}
+
+	list := cache.SecretList()
+	assert.Len(list, 1)
+	assert.Contains(list, *secretFixture)
+	assert.Equal(1, cache.Len())
+}
+
+// An interesting test to write might be a combination of data being returned and deleted.
+// E.g.
+// Get content A.
+// Get content B.
+// Delete A.
+// list.
+// make sure A & B are still there.
+// time passes.
+// make sure A goes away, B is still there.
