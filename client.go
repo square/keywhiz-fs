@@ -17,6 +17,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -58,6 +59,12 @@ type httpClientParams struct {
 	timeout  time.Duration
 }
 
+type SecretDeleted struct{}
+
+func (e SecretDeleted) Error() string {
+	return "deleted"
+}
+
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
 // ca file with the list of trusted certificate authorities.
 func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config) (client Client) {
@@ -97,7 +104,7 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 }
 
 // RawSecret returns raw JSON from requesting a secret.
-func (c Client) RawSecret(name string) (data []byte, ok bool) {
+func (c Client) RawSecret(name string) (data []byte, err error) {
 	now := time.Now()
 	// note: path.Join does not know how to properly escape for URLs!
 	t := *c.url
@@ -105,7 +112,7 @@ func (c Client) RawSecret(name string) (data []byte, ok bool) {
 	resp, err := c.http().Get(t.String())
 	if err != nil {
 		c.Errorf("Error retrieving secret %v: %v", name, err)
-		return nil, false
+		return nil, err
 	}
 	c.Infof("GET /secret/%v %d %v", name, resp.StatusCode, time.Since(now))
 	defer resp.Body.Close()
@@ -113,36 +120,36 @@ func (c Client) RawSecret(name string) (data []byte, ok bool) {
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		c.Errorf("Error reading response body for secret %v: %v", name, err)
-		return nil, false
+		return nil, err
 	}
 
 	switch resp.StatusCode {
 	case 200:
-		return data, true
+		return data, nil
 	case 404:
 		c.Warnf("Secret %v not found", name)
-		return nil, false
+		return nil, SecretDeleted{}
 	default:
 		msg := strings.Join(strings.Split(string(data), "\n"), " ")
 		c.Errorf("Bad response code getting secret %v: (status=%v, msg='%s')", name, resp.StatusCode, msg)
-		return nil, false
+		return nil, errors.New(msg)
 	}
 }
 
 // Secret returns an unmarshalled Secret struct after requesting a secret.
-func (c Client) Secret(name string) (secret *Secret, ok bool) {
-	data, ok := c.RawSecret(name)
-	if !ok {
-		return nil, false
+func (c Client) Secret(name string) (secret *Secret, err error) {
+	data, err := c.RawSecret(name)
+	if err != nil {
+		return nil, err
 	}
 
-	secret, err := ParseSecret(data)
+	secret, err = ParseSecret(data)
 	if err != nil {
 		c.Errorf("Error decoding retrieved secret %v: %v", name, err)
-		return nil, false
+		return nil, err
 	}
 
-	return secret, true
+	return secret, nil
 }
 
 // RawSecretList returns raw JSON from requesting a listing of secrets.
