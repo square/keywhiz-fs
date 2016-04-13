@@ -13,3 +13,4 @@ import:
   - assert
 - package: github.com/rcrowley/go-metrics
 - package: github.com/square/go-sq-metrics
+- package: gopkg.in/alecthomas/kingpin.v2

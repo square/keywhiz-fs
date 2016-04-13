@@ -1,6 +1,12 @@
-hash: 3fb21e0e2d4062d0de91b07fa04212558ddb5b38e3511ee814ddb9e38bbe6907
-updated: 2016-03-22T22:28:35.131187911-07:00
+hash: f6278dd7f90427f6a348ae2dfed6f070b5a5a6be8a0fe620cffd3fdc880cd9cd
+updated: 2016-04-13T16:03:51.884376227-07:00
 imports:
+- name: github.com/alecthomas/template
+  version: a0175ee3bccc567396460bf5acd36800cb10c49c
+  subpackages:
+  - parse
+- name: github.com/alecthomas/units
+  version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/hanwen/go-fuse
   version: 9ecf4dc59b43a0870562e61d7d9fc7d40e263ada
   subpackages:
@@ -8,6 +14,17 @@ imports:
   - fuse/nodefs
   - fuse/pathfs
   - splice
+- name: github.com/juju/errors
+  version: b2c7a7da5b2995941048f60146e67702a292e468
+- name: github.com/juju/loggo
+  version: 8477fc936adf0e382d680310047ca27e128a309a
+- name: github.com/juju/names
+  version: 8a0aa0963bbacdc790914892e9ff942e94d6f795
+- name: github.com/juju/utils
+  version: eb6cb958762135bb61aed1e0951f657c674d427f
+  subpackages:
+  - set
+  - clock
 - name: github.com/rcrowley/go-metrics
   version: 51425a2415d21afadfd55cd93432c0bc69e9598d
 - name: github.com/square/go-sq-metrics
@@ -16,8 +33,16 @@ imports:
   version: 1f4a1643a57e798696635ea4c126e9127adb7d3c
   subpackages:
   - assert
+- name: golang.org/x/crypto
+  version: 1777f3ba8c1fed80fcaec3317e3aaa4f627764d2
+  subpackages:
+  - pbkdf2
 - name: golang.org/x/sys
   version: 50c6bc5e4292a1d4e65c6e9be5f53be28bcbe28e
   subpackages:
   - unix
+- name: gopkg.in/alecthomas/kingpin.v2
+  version: 8cccfa8eb2e3183254457fb1749b2667fbc364c7
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []
