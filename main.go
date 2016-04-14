@@ -15,10 +15,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/signal"
 	"strings"
@@ -30,43 +28,33 @@ import (
 	"github.com/square/go-sq-metrics"
 	klog "github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
-	certFile       = flag.String("cert", "", "PEM-encoded certificate file")
-	keyFile        = flag.String("key", "client.key", "PEM-encoded private key file")
-	caFile         = flag.String("ca", "cacert.crt", "PEM-encoded CA certificates file")
-	asuser         = flag.String("asuser", "keywhiz", "Default user to own files")
-	asgroup        = flag.String("group", "keywhiz", "Default group to own files")
-	ping           = flag.Bool("ping", false, "Enable startup ping to server")
-	debug          = flag.Bool("debug", false, "Enable debugging output")
-	timeoutSeconds = flag.Uint("timeout", 20, "Timeout for communication with server")
-	metricsURL     = flag.String("metrics-url", "", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).")
-	metricsPrefix  = flag.String("metrics-prefix", "", "Override the default metrics prefix used for reporting metrics.")
-	syslog         = flag.Bool("syslog", false, "Send logs to syslog instead of stderr.")
+	app = kingpin.New("keywhiz-fs", "A FUSE based file-system client for Keywhiz.")
+
+	certFile       = app.Flag("cert", "PEM-encoded certificate file").Default("client.crt").String()
+	keyFile        = app.Flag("key", "PEM-encoded private key file").Default("client.key").String()
+	caFile         = app.Flag("ca", "PEM-encoded CA certificates file").Default("cacert.crt").String()
+	asuser         = app.Flag("asuser", "Default user to own files").Default("keywhiz").String()
+	asgroup        = app.Flag("group", "Default group to own files").Default("group").String()
+	ping           = app.Flag("ping", "Enable startup ping to server").Default("false").Bool()
+	debug          = app.Flag("debug", "Enable debugging output").Default("false").Bool()
+	timeout        = app.Flag("timeout", "Timeout for communication with server").Default("20s").Duration()
+	metricsURL     = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").String()
+	metricsPrefix  = app.Flag("metrics-prefix", "Override the default metrics prefix used for reporting metrics.").String()
+	syslog         = app.Flag("syslog", "Send logs to syslog instead of stderr.").Default("false").Bool()
+	serverURL      = app.Arg("url", "server url").Required().URL()
+	mountpoint     = app.Arg("mountpoint", "mountpoint").Required().String()
 	logger         *klog.Logger
 )
 
 func main() {
-	var Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [options] url mountpoint\n", os.Args[0])
-		flag.PrintDefaults()
-	}
+	app.Version(fmt.Sprintf("rev %s-%s on \"%s\"", buildRevision, buildTime, buildMachine))
+	kingpin.MustParse(app.Parse(os.Args[1:]))
 
-	flag.Parse()
-	if flag.NArg() != 2 {
-		Usage()
-		os.Exit(1)
-	}
-
-	serverURL, err := url.Parse(flag.Args()[0])
-	if err != nil {
-		log.Fatalf("Invalid url: %s\n", err)
-		os.Exit(1)
-	}
-	mountpoint := flag.Args()[1]
-
-	logConfig := klog.Config{Debug: *debug, Mountpoint: mountpoint, Syslog: *syslog}
+	logConfig := klog.Config{Debug: *debug, Mountpoint: *mountpoint, Syslog: *syslog}
 	logger = klog.New("kwfs_main", logConfig)
 	defer logger.Close()
 
@@ -75,18 +63,17 @@ func main() {
 		certFile = keyFile
 	}
 
-	metricsHandle := setupMetrics(metricsURL, metricsPrefix, mountpoint)
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
 
 	lockMemory()
 
-	clientTimeout := time.Duration(*timeoutSeconds) * time.Second
 	freshThreshold := 1 * time.Hour
 	backendDeadline := 5 * time.Second
-	maxWait := clientTimeout + backendDeadline
+	maxWait := *timeout + backendDeadline
 	delayDeletion := 1 * time.Hour
 	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait, delayDeletion}
 
-	client := NewClient(*certFile, *keyFile, *caFile, serverURL, clientTimeout, logConfig)
+	client := NewClient(*certFile, *keyFile, *caFile, *serverURL, *timeout, logConfig)
 
 	ownership := NewOwnership(*asuser, *asgroup)
 	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, metricsHandle, logConfig)
@@ -102,7 +89,7 @@ func main() {
 
 	// Empty Options struct avoids setting a global uid/gid override.
 	conn := nodefs.NewFileSystemConnector(root, &nodefs.Options{})
-	server, err := fuse.NewServer(conn.RawFS(), mountpoint, mountOptions)
+	server, err := fuse.NewServer(conn.RawFS(), *mountpoint, mountOptions)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
