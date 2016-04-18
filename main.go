@@ -160,6 +160,7 @@ func lockMemory() {
 // Helper function to panic on error
 func panicOnError(err error) {
 	if err != nil {
+		logger.Errorf("panic: %v", err)
 		panic(err)
 	}
 }
