@@ -34,9 +34,9 @@ import (
 var (
 	app = kingpin.New("keywhiz-fs", "A FUSE based file-system client for Keywhiz.")
 
-	certFile       = app.Flag("cert", "PEM-encoded certificate file").Default("client.crt").String()
-	keyFile        = app.Flag("key", "PEM-encoded private key file").Default("client.key").String()
-	caFile         = app.Flag("ca", "PEM-encoded CA certificates file").Default("cacert.crt").String()
+	certFile       = app.Flag("cert", "PEM-encoded certificate file").Default("").String()
+	keyFile        = app.Flag("key", "PEM-encoded private key file").Required().String()
+	caFile         = app.Flag("ca", "PEM-encoded CA certificates file").Required().String()
 	asuser         = app.Flag("asuser", "Default user to own files").Default("keywhiz").String()
 	asgroup        = app.Flag("group", "Default group to own files").Default("group").String()
 	ping           = app.Flag("ping", "Enable startup ping to server").Default("false").Bool()
