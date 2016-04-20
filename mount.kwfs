@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# This script is called by mount and handles mounting (or hitless remounting) of keywhiz-fs
+# mountpoints.
+#
+# Arguments are <server URL> <mountpoint> -o <additional options>. Often these are
+# defined in /etc/fstab.
+#
+# The script works in the following way:
+# - create a directory with a random name (mountpoint.xxxxxxxxxx)
+# - mount the new directory
+# - create (or override) the mountpoint symlink, pointing to the new directory.
+# - cleanup any other mounts which might be present from a previous invocation.
+
+URL=$1
+MOUNTPOINT=$2
+OPTIONS=$4
+
+export PATH="/bin:$PATH"
+
+IGNOREOPTS="_netdev
+async
+auto
+defaults
+dev
+exec
+noauto
+nodev
+noexec
+nosuid
+nouser
+remount
+ro
+rw
+suid
+sync
+user"
+
+if [[ "$3" != "-o" ]];then
+  echo "Invalid arguments" 1>&2
+  exit 1
+fi
+
+kwfs_cmd="/sbin/keywhiz-fs"
+
+WHONAME=$(/usr/bin/whoami)
+ASUSER=$WHONAME
+MOUNT_NAME=$WHONAME
+
+OPTS=(${OPTIONS//,/ })
+for i in "${OPTS[@]}"; do
+  k=$(echo "$i" |cut -d'=' -f1)
+  v=$(echo "$i" |cut -d'=' -f2)
+
+  # Skip option if the key is in IGNOREOPTS
+  for j in $IGNOREOPTS; do
+    if [[ "$k" == "$j" ]]; then
+      continue 2
+    fi
+  done
+  kwfs_cmd="${kwfs_cmd} --${i}"
+
+  if [[ $k == "group" ]]; then
+    MOUNT_NAME=$v
+  fi
+
+  if [[ $k == "asuser" ]]; then
+    ASUSER=$v
+  fi
+done
+
+# Check that $MOUNTPOINT doesn't contain any .
+# Prevents accidentally unmounting foo.bar when mounting foo
+if [[ "$(basename "$MOUNTPOINT")" == *"."* ]]; then
+  echo "mountpoint should not contain any .: $MOUNTPOINT"
+  exit 1
+fi
+
+# Create a new directory
+RAW_MOUNTPOINT=$(mktemp -d "$MOUNTPOINT".XXXXXXXXXX)
+result=$?
+if [ $result -ne 0 ]; then
+  echo "ERROR: mktemp -d failed"
+  exit $result
+fi
+if [ "$WHONAME" == 'root' ] && [ "$ASUSER" != "$WHONAME" ]; then
+  chown "$ASUSER" "$RAW_MOUNTPOINT"
+fi
+
+# Note: we override $LOG each time this script runs.
+mkdir -p /var/log/kwfs
+LOG=/var/log/kwfs/$MOUNT_NAME
+
+nohup become "$ASUSER" $kwfs_cmd \
+  --syslog \
+  --metrics-url="$METRICS_URL" \
+  --metrics-prefix="$METRICS_PREFIX" \
+  "$URL" \
+  "$RAW_MOUNTPOINT" \
+  > $LOG &
+
+result=$?
+if [ $result -ne 0 ]; then
+  echo "ERROR: could not mount $RAW_MOUNTPOINT: process exited $result"
+  umount "$RAW_MOUNTPOINT"
+  rmdir "$RAW_MOUNTPOINT"
+  exit $result
+fi
+
+# Give the mountpoint a few seconds to come up
+for i in $(seq 1 10); do
+  if [ -f "$RAW_MOUNTPOINT"/.running ]; then
+    break
+  fi
+  sleep 1
+done
+
+if [ ! -f "$RAW_MOUNTPOINT"/.running ]; then
+  echo "ERROR: keywhiz-fs not running, mount failed"
+  umount "$RAW_MOUNTPOINT"
+  rmdir "$RAW_MOUNTPOINT"
+  exit $result
+fi
+
+# Atomic symlink creation. If your system does not implement mv -T, you can
+# try to leverage ln -fs or rename (if you have those and if they are atomic. strace
+# is your friend). In the worst case, you can write a wrapper around the rename syscall.
+NEWLINK=$(mktemp "$MOUNTPOINT".link.XXXXXXXXXX)
+result=$?
+if [ $result -ne 0 ]; then
+  echo "ERROR: mktemp failed"
+  umount "$RAW_MOUNTPOINT"
+  rmdir "$RAW_MOUNTPOINT"
+  exit $result
+fi
+ln -fs "$RAW_MOUNTPOINT" "$NEWLINK"
+mv -T "$NEWLINK" "$MOUNTPOINT"
+
+# Unmount any old mountpoints
+for d in $MOUNTPOINT.*; do
+  if [[ "$d" == "$RAW_MOUNTPOINT" ]]; then
+    continue
+  fi
+  echo "removing old mountpoint: $d"
+  umount "$d"
+  rmdir "$d"
+done
