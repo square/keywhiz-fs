@@ -170,41 +170,50 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	kwfs.Debugf("Open called with '%v'", name)
 
 	var file nodefs.File
+	var mode uint32
 	switch {
 	case name == "", name == ".json", name == ".json/secret":
 		return nil, fuseEISDIR
 	case name == ".version":
 		file = nodefs.NewDataFile([]byte(fsVersion))
+		mode = 0440
 	case name == ".json/status":
 		file = nodefs.NewDataFile(kwfs.statusJSON())
+		mode = 0444
 	case name == ".json/metrics":
 		file = nodefs.NewDataFile(kwfs.metricsJSON())
+		mode = 0444
 	case name == ".clear_cache":
 		file = nodefs.NewDevNullFile()
+		mode = 0440
 	case name == ".running":
 		file = nodefs.NewDataFile(running())
+		mode = 0444
 	case name == ".json/secrets":
 		data, ok := kwfs.Client.RawSecretList()
 		if ok {
 			file = nodefs.NewDataFile(data)
+			mode = 0400
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
 		name = name[len(".json/secret/"):]
 		data, err := kwfs.Client.RawSecret(name)
 		if err == nil {
 			file = nodefs.NewDataFile(data)
+			mode = 0400
 			kwfs.Infof("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
 		}
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
 			file = nodefs.NewDataFile(secret.Content)
+			mode = secret.ModeValue()
 			kwfs.Infof("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
 		}
 	}
 
 	if file != nil {
-		file = nodefs.NewReadOnlyFile(file)
+		file = NewModeFile(nodefs.NewReadOnlyFile(file), mode)
 		return file, fuse.OK
 	}
 	return nil, fuse.ENOENT
