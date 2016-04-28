@@ -57,15 +57,16 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 		filename string
 		size     int
 		mode     int
+		openable bool
 	}{
-		{"", 4096, 0755 | fuse.S_IFDIR},
-		{".version", len(fsVersion), 0444 | fuse.S_IFREG},
-		{".json/status", len(suite.fs.statusJSON()), 0444 | fuse.S_IFREG},
-		{".running", -1, 0444 | fuse.S_IFREG},
-		{".clear_cache", 0, 0440 | fuse.S_IFREG},
-		{".json", 4096, 0700 | fuse.S_IFDIR},
-		{".json/secret", 4096, 0700 | fuse.S_IFDIR},
-		{".json/secrets", -1, 0400 | fuse.S_IFREG},
+		{"", 4096, 0755 | fuse.S_IFDIR, false},
+		{".version", len(fsVersion), 0444 | fuse.S_IFREG, true},
+		{".json/status", len(suite.fs.statusJSON()), 0444 | fuse.S_IFREG, true},
+		{".running", -1, 0444 | fuse.S_IFREG, true},
+		{".clear_cache", 0, 0440 | fuse.S_IFREG, false},
+		{".json", 4096, 0700 | fuse.S_IFDIR, false},
+		{".json/secret", 4096, 0700 | fuse.S_IFDIR, false},
+		{".json/secrets", -1, 0400 | fuse.S_IFREG, true},
 	}
 
 	for _, c := range cases {
@@ -74,6 +75,14 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 		assert.EqualValues(c.mode, attr.Mode, "Expected %v mode %#o, was %#o", c.filename, c.mode, attr.Mode)
 		if c.size >= 0 {
 			assert.EqualValues(c.size, attr.Size, "Expected %v size %d, was %d", c.filename, c.size, attr.Size)
+		}
+		if c.openable {
+			file, status := suite.fs.Open(c.filename, 0, fuseContext)
+			assert.Equal(fuse.OK, status, "Expected %v open status to be fuse.OK", c.filename)
+			var fattr *fuse.Attr = new(fuse.Attr)
+			status = file.GetAttr(fattr)
+			assert.Equal(fuse.OK, status, "Expected %v fattr to be fuse.OK", c.filename)
+			assert.EqualValues(c.mode, fattr.Mode, "Expected %v fattr mode %#o, was %#o", c.filename, c.mode, fattr.Mode)
 		}
 	}
 
@@ -108,6 +117,12 @@ func (suite *FsTestSuite) TestFileAttrs() {
 		assert.Equal(fuse.OK, status, "Expected %v attr status to be fuse.OK", c.filename)
 		assert.Equal(c.mode, attr.Mode, "Expected %v mode %#o, was %#o", c.filename, c.mode, attr.Mode)
 		assert.Equal(uint64(len(c.content)), attr.Size, "Expected %v size to match", c.filename)
+		file, status := suite.fs.Open(c.filename, 0, fuseContext)
+		assert.Equal(fuse.OK, status, "Expected %v open status to be fuse.OK", c.filename)
+		var fattr *fuse.Attr = new(fuse.Attr)
+		status = file.GetAttr(fattr)
+		assert.Equal(fuse.OK, status, "Expected %v fattr to be fuse.OK", c.filename)
+		assert.EqualValues(c.mode, fattr.Mode, "Expected %v fattr mode %#o, was %#o", c.filename, c.mode, fattr.Mode)
 	}
 }
 
