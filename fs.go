@@ -326,6 +326,31 @@ func (kwfs KeywhizFs) directoryAttr(subdirCount, mode uint32) *fuse.Attr {
 	return &attr
 }
 
+// NewModeFile wraps a File so all GetAttr operations return a
+// constant Mode
+func NewModeFile(f nodefs.File, mode uint32) nodefs.File {
+	return &modeFile{File: f, mode: mode}
+}
+
+type modeFile struct {
+	nodefs.File
+	mode uint32
+}
+
+func (f *modeFile) InnerFile() nodefs.File {
+	return f.File
+}
+
+func (f *modeFile) String() string {
+	return fmt.Sprintf("modeFile(%s)", f.File.String())
+}
+
+func (f *modeFile) GetAttr(out *fuse.Attr) fuse.Status {
+	status := f.File.GetAttr(out)
+	out.Mode = f.mode
+	return status
+}
+
 // running provides a formatted string with the current process ID.
 func running() []byte {
 	return []byte(fmt.Sprintf("pid=%d", os.Getpid()))
