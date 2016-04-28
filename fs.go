@@ -213,7 +213,7 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	}
 
 	if file != nil {
-		file = NewModeFile(nodefs.NewReadOnlyFile(file), mode)
+		file = NewModeFile(nodefs.NewReadOnlyFile(file), mode|fuse.S_IFREG)
 		return file, fuse.OK
 	}
 	return nil, fuse.ENOENT
