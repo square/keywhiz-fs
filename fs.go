@@ -176,7 +176,7 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 		return nil, fuseEISDIR
 	case name == ".version":
 		file = nodefs.NewDataFile([]byte(fsVersion))
-		mode = 0440
+		mode = 0444
 	case name == ".json/status":
 		file = nodefs.NewDataFile(kwfs.statusJSON())
 		mode = 0444
