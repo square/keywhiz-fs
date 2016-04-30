@@ -82,7 +82,7 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 			var fattr *fuse.Attr = new(fuse.Attr)
 			status = file.GetAttr(fattr)
 			assert.Equal(fuse.OK, status, "Expected %v fattr to be fuse.OK", c.filename)
-			assert.EqualValues(c.mode, fattr.Mode, "Expected %v fattr mode %#o, was %#o", c.filename, c.mode, fattr.Mode)
+			assert.EqualValues(attr, fattr, "Expected stat == fstat")
 		}
 	}
 
@@ -121,8 +121,8 @@ func (suite *FsTestSuite) TestFileAttrs() {
 		assert.Equal(fuse.OK, status, "Expected %v open status to be fuse.OK", c.filename)
 		var fattr *fuse.Attr = new(fuse.Attr)
 		status = file.GetAttr(fattr)
-		assert.Equal(fuse.OK, status, "Expected %v fattr to be fuse.OK", c.filename)
-		assert.EqualValues(c.mode, fattr.Mode, "Expected %v fattr mode %#o, was %#o", c.filename, c.mode, fattr.Mode)
+		assert.Equal(fuse.OK, status, "Expected fstat to be fuse.OK")
+		assert.EqualValues(attr, fattr, "Expected stat == fstat")
 	}
 }
 
