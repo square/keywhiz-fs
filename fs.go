@@ -146,8 +146,8 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 			attr = kwfs.fileAttr(size, 0400)
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
-		name = name[len(".json/secret/"):]
-		data, err := kwfs.Client.RawSecret(name)
+		sname := name[len(".json/secret/"):]
+		data, err := kwfs.Client.RawSecret(sname)
 		if err == nil {
 			size := uint64(len(data))
 			attr = kwfs.fileAttr(size, 0400)
@@ -189,11 +189,11 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 			file = nodefs.NewDataFile(data)
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
-		name = name[len(".json/secret/"):]
-		data, err := kwfs.Client.RawSecret(name)
+		sname := name[len(".json/secret/"):]
+		data, err := kwfs.Client.RawSecret(sname)
 		if err == nil {
 			file = nodefs.NewDataFile(data)
-			kwfs.Infof("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
+			kwfs.Infof("Access to %s by uid %d, with gid %d", sname, context.Uid, context.Gid)
 		}
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
@@ -210,7 +210,7 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 			return nil, fuse.ENOENT
 		}
 		file = NewAttrFile(file, attr)
-		kwfs.Debugf("Open returning '%s'", file.String())
+		kwfs.Debugf("Open returning '%s': '%s'", name, file.String())
 		return file, fuse.OK
 	}
 	return nil, fuse.ENOENT
