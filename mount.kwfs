@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# This script is called by mount and handles mounting (or hitless remounting) of keywhiz-fs
-# mountpoints.
+# This script is called by mount and handles mounting (or hitless remounting)
+# of keywhiz-fs mountpoints.
 #
-# Arguments are <server URL> <mountpoint> -o <additional options>. Often these are
-# defined in /etc/fstab.
+# Arguments are <server URL> <mountpoint> -o <additional options>. Often these
+# are defined in /etc/fstab.
 #
 # The script works in the following way:
 # - create a directory with a random name (mountpoint.xxxxxxxxxx)
@@ -22,6 +22,7 @@ IGNOREOPTS="_netdev
 async
 auto
 defaults
+remount
 dev
 exec
 noauto
@@ -29,7 +30,6 @@ nodev
 noexec
 nosuid
 nouser
-remount
 ro
 rw
 suid
@@ -69,12 +69,9 @@ for i in "${OPTS[@]}"; do
   fi
 done
 
-# Check that $MOUNTPOINT doesn't contain any .
-# Prevents accidentally unmounting foo.bar when mounting foo
-if [[ "$(basename "$MOUNTPOINT")" == *"."* ]]; then
-  echo "mountpoint should not contain any .: $MOUNTPOINT"
-  exit 1
-fi
+# Ideally, scripts mounting keywhiz-fs should call mount with -c which avoid
+# resolving symlinks. That's not always the case, so we drop anything after '.'
+MOUNTPOINT=$(expr "$MOUNTPOINT" : '\([^.]*\)')
 
 # Create a new directory
 RAW_MOUNTPOINT=$(mktemp -d "$MOUNTPOINT".XXXXXXXXXX)
@@ -93,7 +90,6 @@ LOG=/var/log/kwfs/$MOUNT_NAME
 
 nohup become "$ASUSER" $kwfs_cmd \
   --syslog \
-  --metrics-url="$METRICS_URL" \
   --metrics-prefix="$METRICS_PREFIX" \
   "$URL" \
   "$RAW_MOUNTPOINT" \
