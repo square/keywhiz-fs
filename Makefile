@@ -9,7 +9,7 @@ BUILD_MACHINE := $(shell uname -mnrs)
 
 # Build
 build: depends
-	go build -ldflags " \
+	go build -ldflags "-s -w \
 	  -X \"main.buildTime=$(BUILD_TIME)\" \
 	  -X \"main.buildRevision=$(BUILD_REVISION)\" \
 	  -X \"main.buildMachine=$(BUILD_MACHINE)\""
