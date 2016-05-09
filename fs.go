@@ -15,10 +15,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"time"
@@ -97,6 +99,15 @@ func (kwfs KeywhizFs) metricsJSON() []byte {
 	return []byte{}
 }
 
+func (kwfs KeywhizFs) profile(name string) []byte {
+	var b bytes.Buffer
+	err := pprof.Lookup(name).WriteTo(&b, 0)
+	if err != nil {
+		kwfs.Warnf("Error writing profile: %v", err)
+	}
+	return b.Bytes()
+}
+
 // NewKeywhizFs readies a KeywhizFs struct and its parent filesystem objects.
 func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, metrics *sqmetrics.SquareMetrics, logConfig log.Config) (kwfs *KeywhizFs, root nodefs.Node, err error) {
 	logger := log.New("kwfs", logConfig)
@@ -152,6 +163,14 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 			size := uint64(len(data))
 			attr = kwfs.fileAttr(size, 0400)
 		}
+	case name == ".pprof":
+		attr = kwfs.directoryAttr(1, 0700)
+	case name == ".pprof/heap":
+		size := uint64(len(kwfs.profile("heap")))
+		attr = kwfs.fileAttr(size, 0444)
+	case name == ".pprof/goroutine":
+		size := uint64(len(kwfs.profile("goroutine")))
+		attr = kwfs.fileAttr(size, 0444)
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
@@ -171,7 +190,7 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 
 	var file nodefs.File
 	switch {
-	case name == "", name == ".json", name == ".json/secret":
+	case name == "", name == ".json", name == ".json/secret", name == ".pprof":
 		return nil, fuseEISDIR
 	case name == ".version":
 		file = nodefs.NewDataFile([]byte(fsVersion))
@@ -195,6 +214,10 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 			file = nodefs.NewDataFile(data)
 			kwfs.Infof("Access to %s by uid %d, with gid %d", sname, context.Uid, context.Gid)
 		}
+	case name == ".pprof/heap":
+		file = nodefs.NewDataFile(kwfs.profile("heap"))
+	case name == ".pprof/goroutine":
+		file = nodefs.NewDataFile(kwfs.profile("goroutine"))
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
@@ -237,6 +260,11 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 		}
 	case ".json/secret":
 		entries = kwfs.secretsDirListing()
+	case ".pprof":
+		entries = []fuse.DirEntry{
+			fuse.DirEntry{Name: "heap", Mode: fuse.S_IFREG},
+			fuse.DirEntry{Name: "goroutine", Mode: fuse.S_IFREG},
+		}
 	}
 
 	if len(entries) == 0 {
