@@ -47,9 +47,11 @@ user_allow_other
 
 The `fusermount` progam is used within the go-fuse library. Generally, it is installed setuid root, with group read/execute permissions for group 'fuse'. For KeywhizFs to work, the running user must be a member of the 'fuse' group.
 
-## `CAP_IPC_LOCK` capability
+## `mlockall` / `CAP_IPC_LOCK` capability
 
-To prevent secrets from ending up in swap, KeywhizFs will attempt to mlockall memory. This is not required, but is beneficial. On Linux, set the proper capability on the KeywhizFs binary so memory can be locked without running as root. Example assumes your binary is at `/sbin/keywhiz-fs`.
+To prevent secrets from ending up in swap, KeywhizFs will attempt to mlockall memory. This is not required, but is beneficial. To disable this behavior, pass `--disable-mlock` to keywhiz-fs on startup. Disabling `mlockall` means that secrets may end up in swap. 
+
+If you want to `mlockall` memory, you will need to make sure the KeywhizFs binary has the `CAP_IPC_LOCK` capability. On Linux, set the proper capability on the KeywhizFs binary so memory can be locked without running as root. Example assumes your binary is at `/sbin/keywhiz-fs`.
 
 ```
 setcap 'cap_ipc_lock=+ep' /sbin/keywhiz-fs
@@ -58,19 +60,32 @@ setcap 'cap_ipc_lock=+ep' /sbin/keywhiz-fs
 ## Usage
 
 ```
-Usage: ./keywhiz-fs [options] url mountpoint
-Options:
-  --asuser="keywhiz": Default user to own files
-  --ca="cacert.crt": PEM-encoded CA certificates file
-  --cert="": PEM-encoded certificate file
-  --debug=false: Enable debugging output
-  --group="keywhiz": Default group to own files
-  --key="client.key": PEM-encoded private key file
-  --ping=false: Enable startup ping to server
-  --timeout=20: Timeout for communication with server in seconds
+usage: keywhiz-fs --key=FILE --ca=FILE [<flags>] <url> <mountpoint>
+
+A FUSE based file-system client for Keywhiz.
+
+Flags:
+  --help                   Show context-sensitive help (also try --help-long and --help-man).
+  --cert=FILE              PEM-encoded certificate file
+  --key=FILE               PEM-encoded private key file
+  --ca=FILE                PEM-encoded CA certificates file
+  --asuser="keywhiz"       Default user to own files
+  --group="keywhiz"        Default group to own files
+  --ping                   Enable startup ping to server
+  --debug                  Enable debugging output
+  --timeout=20s            Timeout for communication with server
+  --metrics-url=URL        Collect metrics and POST them periodically to the given URL (via HTTP/JSON).
+  --metrics-prefix=PREFIX  Override the default metrics prefix used for reporting metrics.
+  --syslog                 Send logs to syslog instead of stderr.
+  --disable-mlock          Do not call mlockall on process memory.
+  --version                Show application version.
+
+Args:
+  <url>         server url
+  <mountpoint>  mountpoint
 ```
 
-The `-cert` option may be omitted if the `-key` option contains both a PEM-encoded certificate and key.
+The `--cert` option may be omitted if the `--key` option contains both a PEM-encoded certificate and key.
 
 ## Running in Docker
 

@@ -34,20 +34,21 @@ import (
 var (
 	app = kingpin.New("keywhiz-fs", "A FUSE based file-system client for Keywhiz.")
 
-	certFile       = app.Flag("cert", "PEM-encoded certificate file").Default("").String()
-	keyFile        = app.Flag("key", "PEM-encoded private key file").Required().String()
-	caFile         = app.Flag("ca", "PEM-encoded CA certificates file").Required().String()
-	asuser         = app.Flag("asuser", "Default user to own files").Default("keywhiz").String()
-	asgroup        = app.Flag("group", "Default group to own files").Default("group").String()
-	ping           = app.Flag("ping", "Enable startup ping to server").Default("false").Bool()
-	debug          = app.Flag("debug", "Enable debugging output").Default("false").Bool()
-	timeout        = app.Flag("timeout", "Timeout for communication with server").Default("20s").Duration()
-	metricsURL     = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").String()
-	metricsPrefix  = app.Flag("metrics-prefix", "Override the default metrics prefix used for reporting metrics.").String()
-	syslog         = app.Flag("syslog", "Send logs to syslog instead of stderr.").Default("false").Bool()
-	serverURL      = app.Arg("url", "server url").Required().URL()
-	mountpoint     = app.Arg("mountpoint", "mountpoint").Required().String()
-	logger         *klog.Logger
+	certFile      = app.Flag("cert", "PEM-encoded certificate file").PlaceHolder("FILE").Default("").String()
+	keyFile       = app.Flag("key", "PEM-encoded private key file").PlaceHolder("FILE").Required().String()
+	caFile        = app.Flag("ca", "PEM-encoded CA certificates file").PlaceHolder("FILE").Required().String()
+	asuser        = app.Flag("asuser", "Default user to own files").Default("keywhiz").String()
+	asgroup       = app.Flag("group", "Default group to own files").Default("keywhiz").String()
+	ping          = app.Flag("ping", "Enable startup ping to server").Default("false").Bool()
+	debug         = app.Flag("debug", "Enable debugging output").Default("false").Bool()
+	timeout       = app.Flag("timeout", "Timeout for communication with server").Default("20s").Duration()
+	metricsURL    = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").PlaceHolder("URL").String()
+	metricsPrefix = app.Flag("metrics-prefix", "Override the default metrics prefix used for reporting metrics.").PlaceHolder("PREFIX").String()
+	syslog        = app.Flag("syslog", "Send logs to syslog instead of stderr.").Default("false").Bool()
+	disableMlock  = app.Flag("disable-mlock", "Do not call mlockall on process memory.").Default("false").Bool()
+	serverURL     = app.Arg("url", "server url").Required().URL()
+	mountpoint    = app.Arg("mountpoint", "mountpoint").Required().String()
+	logger        *klog.Logger
 )
 
 func main() {
@@ -65,7 +66,9 @@ func main() {
 
 	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
 
-	lockMemory()
+	if !*disableMlock {
+		lockMemory()
+	}
 
 	freshThreshold := 1 * time.Hour
 	backendDeadline := 5 * time.Second
