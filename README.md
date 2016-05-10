@@ -49,7 +49,7 @@ The `fusermount` progam is used within the go-fuse library. Generally, it is ins
 
 ## `mlockall` / `CAP_IPC_LOCK` capability
 
-To prevent secrets from ending up in swap, KeywhizFs will attempt to mlockall memory. This is not required, but is beneficial. To disable this behavior, pass `--no-mlock` to keywhiz-fs on startup. Disabling `mlockall` means that secrets may end up in swap. 
+To prevent secrets from ending up in swap, KeywhizFs will attempt to mlockall memory. This is not required, but is beneficial. To disable this behavior, pass `--disable-mlock` to keywhiz-fs on startup. Disabling `mlockall` means that secrets may end up in swap. 
 
 If you want to `mlockall` memory, you will need to make sure the KeywhizFs binary has the `CAP_IPC_LOCK` capability. On Linux, set the proper capability on the KeywhizFs binary so memory can be locked without running as root. Example assumes your binary is at `/sbin/keywhiz-fs`.
 
@@ -77,7 +77,7 @@ Flags:
   --metrics-url=URL        Collect metrics and POST them periodically to the given URL (via HTTP/JSON).
   --metrics-prefix=PREFIX  Override the default metrics prefix used for reporting metrics.
   --syslog                 Send logs to syslog instead of stderr.
-  --no-mlock               Do not call mlockall on process memory.
+  --disable-mlock          Do not call mlockall on process memory.
   --version                Show application version.
 
 Args:

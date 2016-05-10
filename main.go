@@ -45,7 +45,7 @@ var (
 	metricsURL    = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").PlaceHolder("URL").String()
 	metricsPrefix = app.Flag("metrics-prefix", "Override the default metrics prefix used for reporting metrics.").PlaceHolder("PREFIX").String()
 	syslog        = app.Flag("syslog", "Send logs to syslog instead of stderr.").Default("false").Bool()
-	disableMlock  = app.Flag("no-mlock", "Do not call mlockall on process memory.").Default("false").Bool()
+	disableMlock  = app.Flag("disable-mlock", "Do not call mlockall on process memory.").Default("false").Bool()
 	serverURL     = app.Arg("url", "server url").Required().URL()
 	mountpoint    = app.Arg("mountpoint", "mountpoint").Required().String()
 	logger        *klog.Logger
