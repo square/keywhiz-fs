@@ -103,6 +103,27 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 	return Client{logger, getClient, serverURL, params}
 }
 
+// ServerStatus returns raw JSON from the server's _status endpoint
+func (c Client) ServerStatus() (data []byte, err error) {
+	now := time.Now()
+	t := *c.url
+	t.Path = path.Join(c.url.Path, "_status")
+	resp, err := c.http().Get(t.String())
+	if err != nil {
+		c.Errorf("Error retrieving server status: %v", err)
+		return nil, err
+	}
+	c.Infof("GET /_status %d %v", resp.StatusCode, time.Since(now))
+	defer resp.Body.Close()
+
+	data, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		c.Errorf("Error reading response body for server status %v", err)
+		return nil, err
+	}
+	return data, nil
+}
+
 // RawSecret returns raw JSON from requesting a secret.
 func (c Client) RawSecret(name string) (data []byte, err error) {
 	now := time.Now()

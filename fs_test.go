@@ -256,10 +256,11 @@ func (suite *FsTestSuite) TestOpenDir() {
 		{
 			".json",
 			map[string]bool{
-				"metrics": true,
-				"status":  true,
-				"secret":  false,
-				"secrets": true,
+				"metrics":       true,
+				"status":        true,
+				"server_status": true,
+				"secret":        false,
+				"secrets":       true,
 			},
 		},
 		{
