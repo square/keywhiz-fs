@@ -156,6 +156,12 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 			size := uint64(len(data))
 			attr = kwfs.fileAttr(size, 0400)
 		}
+	case name == ".json/server_status":
+		data, err := kwfs.Client.ServerStatus()
+		if err == nil {
+			size := uint64(len(data))
+			attr = kwfs.fileAttr(size, 0444)
+		}
 	case strings.HasPrefix(name, ".json/secret/"):
 		sname := name[len(".json/secret/"):]
 		data, err := kwfs.Client.RawSecret(sname)
@@ -205,6 +211,11 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	case name == ".json/secrets":
 		data, ok := kwfs.Client.RawSecretList()
 		if ok {
+			file = nodefs.NewDataFile(data)
+		}
+	case name == ".json/server_status":
+		data, err := kwfs.Client.ServerStatus()
+		if err == nil {
 			file = nodefs.NewDataFile(data)
 		}
 	case strings.HasPrefix(name, ".json/secret/"):
@@ -257,6 +268,7 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 			{Name: "secret", Mode: fuse.S_IFDIR},
 			{Name: "secrets", Mode: fuse.S_IFREG},
 			{Name: "status", Mode: fuse.S_IFREG},
+			{Name: "server_status", Mode: fuse.S_IFREG},
 		}
 	case ".json/secret":
 		entries = kwfs.secretsDirListing()
