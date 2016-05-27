@@ -17,7 +17,7 @@ imports:
 - name: github.com/rcrowley/go-metrics
   version: 51425a2415d21afadfd55cd93432c0bc69e9598d
 - name: github.com/square/go-sq-metrics
-  version: 6be866e8e88bf8fd368d6a2963179f0ac9aa6f15
+  version: 5c455259c9147abb1d5c51a6ed7fca3226d1eb92
 - name: github.com/stretchr/testify
   version: 1f4a1643a57e798696635ea4c126e9127adb7d3c
   subpackages:
