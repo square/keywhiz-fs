@@ -143,7 +143,7 @@ func setupMetrics(metricsURL *string, metricsPrefix *string, mountpoint string) 
 		prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
 	}
 
-	return sqmetrics.NewMetrics(*metricsURL, prefix, metrics.DefaultRegistry)
+	return sqmetrics.NewMetrics(*metricsURL, prefix, (1 * time.Second), metrics.DefaultRegistry)
 }
 
 // Locks memory, preventing memory from being written to disk as swap
