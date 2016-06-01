@@ -3,8 +3,8 @@ language: go
 sudo: required
 dist: trusty
 
-env:
-- GO15VENDOREXPERIMENT=1
+services:
+- docker
 
 go:
 - 1.6
@@ -21,6 +21,7 @@ before_install:
 
 install:
 - make build
+- docker build -t square/keywhiz-fs .
 
 script:
 - make test
