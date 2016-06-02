@@ -39,7 +39,6 @@ var (
 	caFile        = app.Flag("ca", "PEM-encoded CA certificates file").PlaceHolder("FILE").Required().String()
 	asuser        = app.Flag("asuser", "Default user to own files").Default("keywhiz").String()
 	asgroup       = app.Flag("group", "Default group to own files").Default("keywhiz").String()
-	ping          = app.Flag("ping", "Enable startup ping to server").Default("false").Bool()
 	debug         = app.Flag("debug", "Enable debugging output").Default("false").Bool()
 	timeout       = app.Flag("timeout", "Timeout for communication with server").Default("20s").Duration()
 	metricsURL    = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").PlaceHolder("URL").String()
@@ -111,16 +110,7 @@ func main() {
 		}
 	}()
 
-	// Prime cache: we retrieve the initial secrets list right away, so that
-	// we can make sure we're ready to show contents as soon as we get mounted.
-	if *ping {
-		ok := kwfs.Cache.pingBackend()
-		if !ok {
-			fmt.Fprintf(os.Stderr, "unable to talk to backend")
-			os.Exit(1)
-		}
-	}
-
+	kwfs.Cache.Warmup()
 	server.Serve()
 	logger.Infof("Exiting")
 }

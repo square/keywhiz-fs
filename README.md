@@ -71,7 +71,6 @@ Flags:
   --ca=FILE                PEM-encoded CA certificates file
   --asuser="keywhiz"       Default user to own files
   --group="keywhiz"        Default group to own files
-  --ping                   Enable startup ping to server
   --debug                  Enable debugging output
   --timeout=20s            Timeout for communication with server
   --metrics-url=URL        Collect metrics and POST them periodically to the given URL (via HTTP/JSON).

@@ -62,6 +62,22 @@ func NewCache(backend SecretBackend, timeouts Timeouts, logConfig log.Config, no
 	return &Cache{logger, NewSecretMap(timeouts, now), backend, timeouts, now}
 }
 
+// Warmup reads the secret list from the backend to prime the cache.
+// Should only be called after creating a new cache on startup.
+func (c *Cache) Warmup() {
+	// Attempt to warmup cache
+	newMap := NewSecretMap(c.timeouts, c.now)
+	secrets, ok := c.backend.SecretList()
+	if ok {
+		for _, backendSecret := range secrets {
+			newMap.Put(backendSecret.Name, backendSecret)
+		}
+		c.secretMap.Overwrite(newMap)
+	} else {
+		c.Warnf("Failed to warmup cache on startup")
+	}
+}
+
 // Clear empties the internal cache. This function does not honor the
 // delayed deletion contract. The function is called when the user deletes
 // .clear_cache.
@@ -276,25 +292,4 @@ func (c *Cache) backendSecretList() chan []Secret {
 		close(secretsc)
 	}()
 	return secretsc
-}
-
-// Ping backend on startup
-// TODO: convert this to a regular ping
-func (c *Cache) pingBackend() bool {
-	secrets, ok := c.backend.SecretList()
-	if !ok {
-		return false
-	}
-
-	// Create a copy of the current map and mark all the elements as deleted.
-	newMap := NewSecretMap(c.timeouts, c.now)
-	newMap.Overwrite(c.secretMap)
-	newMap.DeleteAll()
-	for _, backendSecret := range secrets {
-		newMap.Put(backendSecret.Name, backendSecret)
-	}
-	// TODO: this code isn't concurrency safe! We could write it so that in the worst case a secret gets marked as deleted instead of
-	// getting dropped on the floor.
-	c.secretMap.Overwrite(newMap)
-	return true
 }
