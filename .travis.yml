@@ -1,3 +1,4 @@
+---
 language: go
 
 sudo: required
@@ -13,14 +14,13 @@ before_script:
 - go vet
 
 before_install:
-- go get github.com/Masterminds/glide
 - go get github.com/axw/gocov/gocov
 - go get github.com/mattn/goveralls
 - go get golang.org/x/tools/cmd/cover
 - sudo apt-get install fuse
 
 install:
-- make build
+- make keywhiz-fs
 - docker build -t square/keywhiz-fs .
 
 script:
