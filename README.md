@@ -28,9 +28,11 @@ KeywhizFs will display all secrets under the top level directory of the mountpoi
 
 # Building
 
-Install glide (`go get github.com/Masterminds/glide` or `brew install glide` if you are on Mac OS X).
+Run `make keywhiz-fs` to build a binary and `make test` to run tests.
 
-Run `make build` to build a binary and `make test` to run tests.
+We use [glide][1] to manage vendored dependencies.
+
+[1]: https://glide.sh
 
 # Running
 

@@ -13,5 +13,4 @@ eclipsebin
 *.iws
 *.out
 .DS_Store
-vendor/
 keywhiz-fs
