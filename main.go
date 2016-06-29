@@ -69,7 +69,7 @@ func main() {
 		lockMemory()
 	}
 
-	freshThreshold := 1 * time.Hour
+	freshThreshold := 1 * time.Second
 	backendDeadline := 5 * time.Second
 	maxWait := *timeout + backendDeadline
 	delayDeletion := 1 * time.Hour
