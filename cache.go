@@ -109,7 +109,7 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 	}
 
 	// If cache succeeded, and entry is very recent, return cache result
-	if success && time.Since(cacheResult.Time) < c.timeouts.Fresh {
+	if success && (time.Since(cacheResult.Time) < c.timeouts.Fresh) {
 		return &cacheResult.Secret, success
 	}
 
@@ -135,10 +135,9 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 // SecretList returns a listing of Secrets from cache or a server.
 //
 // Cache logic:
-//  * Fetch cache secret list.
 //  * If backend returns fast: update cache, return.
 //  * If timeout backend deadline: return cache entries, background update cache.
-//  * If timeout max wait: pretend no files.
+//  * If timeout max wait: return cache version.
 func (c *Cache) SecretList() []Secret {
 	// Perform cache lookup first
 	var secretList []Secret
