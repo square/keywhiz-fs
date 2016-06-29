@@ -153,18 +153,6 @@ func TestCacheSecretWhenClientTimesOut(t *testing.T) {
 	assert.Equal(secretFixture, secret)
 }
 
-func TestCacheAndBackendTimeout(t *testing.T) {
-	assert := assert.New(t)
-	timeouts := Timeouts{0, 1 * time.Hour, 0, 1 * time.Hour}
-
-	backend := ChannelBackend{} // channels are nil and will block
-	cache := NewCache(backend, timeouts, logConfig, nil)
-
-	// everything times out, should get empty list
-	list := cache.SecretList()
-	assert.Empty(list)
-}
-
 func TestCacheSecretUsesClientOverCache(t *testing.T) {
 	assert := assert.New(t)
 
