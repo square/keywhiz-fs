@@ -210,6 +210,31 @@ func TestCacheSecretAvoidsBackendWhenResultFresh(t *testing.T) {
 	assert.Equal(fixture1, secret) // fixture1 comes form the backend
 }
 
+func TestCacheSecretUsesBackendWhenResultStale(t *testing.T) {
+	assert := assert.New(t)
+
+	fixture1, _ := ParseSecret(fixture("secret.json"))
+	fixture2, _ := ParseSecret(fixture("secretNormalOwner.json"))
+	fixture2.Name = fixture1.Name
+
+	// Backend returns fixture1, then fixture2
+	secretc := make(chan *Secret, 2)
+	backend := ChannelBackend{secretc: secretc}
+	secretc <- fixture1
+	secretc <- fixture2
+
+	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
+	cache := NewCache(backend, timeouts, logConfig, nil)
+	secret, ok := cache.Secret(fixture1.Name)
+	assert.True(ok)
+	assert.Equal(fixture1, secret)
+
+	time.Sleep(2 * time.Nanosecond)
+	secret, ok = cache.Secret(fixture1.Name)
+	assert.True(ok)
+	assert.Equal(fixture2, secret)
+}
+
 func TestCacheSecretListUsesValuesFromCacheIfClientFails(t *testing.T) {
 	assert := assert.New(t)
 

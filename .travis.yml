@@ -23,8 +23,13 @@ install:
 - make keywhiz-fs
 - docker build -t square/keywhiz-fs .
 
+before_script:
+- sudo chmod 644 /etc/fuse.conf
+- echo "user_allow_other" | sudo tee -a /etc/fuse.conf
+
 script:
 - make test
+- make integration-test
 
 after_success:
 - $HOME/gopath/bin/goveralls -coverprofile coverage.out -service=travis-ci

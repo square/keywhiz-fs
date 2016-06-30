@@ -1,0 +1,6 @@
+package: github.com/square/keywhiz-fs/integration_test
+import:
+- package: github.com/gorilla/mux
+- package: github.com/stretchr/testify
+  subpackages:
+  - assert
