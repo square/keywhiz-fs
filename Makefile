@@ -18,4 +18,8 @@ keywhiz-fs: $(SOURCE_FILES)
 test:
 	go test -v -coverprofile coverage.out
 
-.PHONY: test
+integration-test: keywhiz-fs
+	go build -o integration-tests/fake-server ./integration-tests
+	cd integration-tests && go test -v .
+
+.PHONY: test integration-test

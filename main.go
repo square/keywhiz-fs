@@ -41,6 +41,7 @@ var (
 	asgroup       = app.Flag("group", "Default group to own files").Default("keywhiz").String()
 	debug         = app.Flag("debug", "Enable debugging output").Default("false").Bool()
 	timeout       = app.Flag("timeout", "Timeout for communication with server").Default("20s").Duration()
+	cacheTimeout  = app.Flag("cache-timeout", "Timeout for cache eviction. Useful for testing.").Default("1h").Duration()
 	metricsURL    = app.Flag("metrics-url", "Collect metrics and POST them periodically to the given URL (via HTTP/JSON).").PlaceHolder("URL").String()
 	metricsPrefix = app.Flag("metrics-prefix", "Override the default metrics prefix used for reporting metrics.").PlaceHolder("PREFIX").String()
 	syslog        = app.Flag("syslog", "Send logs to syslog instead of stderr.").Default("false").Bool()
@@ -69,7 +70,7 @@ func main() {
 		lockMemory()
 	}
 
-	freshThreshold := 1 * time.Second
+	freshThreshold := *cacheTimeout
 	backendDeadline := 5 * time.Second
 	maxWait := *timeout + backendDeadline
 	delayDeletion := 1 * time.Hour
