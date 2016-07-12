@@ -139,14 +139,6 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 //  * If timeout backend deadline: return cache entries, background update cache.
 //  * If timeout max wait: return cache version.
 func (c *Cache) SecretList() []Secret {
-	// Perform cache lookup first
-	var secretList []Secret
-
-	cacheResult := c.cacheSecretList()
-	if cacheResult != nil {
-		secretList = cacheResult
-	}
-
 	backendDeadline := time.After(c.timeouts.BackendDeadline)
 	backendDone := c.backendSecretList()
 
@@ -156,7 +148,7 @@ func (c *Cache) SecretList() []Secret {
 			return backendResult
 		case <-backendDeadline:
 			c.Errorf("Backend timeout for secret list")
-			return secretList
+			return c.cacheSecretList()
 		}
 	}
 }
