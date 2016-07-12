@@ -232,11 +232,14 @@ func (c *Cache) backendSecretList() chan []Secret {
 				if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
 					newMap.Put(backendSecret.Name, s.Secret)
 				} else {
-					// We don't have content for this secret. TODO: explain under what circumstances this
+					// We don't have content for this secret. This happens when the cache has never seen a given secret
+					// (at startup or when a new secret is added).
 					// can happen.
 					newMap.Put(backendSecret.Name, backendSecret)
 				}
 			} else {
+				// TODO: explain why this case can happen. It doesn't seem like it can,
+				// listing secrets always returns just the names.
 				// Cache the latest info.
 				newMap.Put(backendSecret.Name, backendSecret)
 			}
