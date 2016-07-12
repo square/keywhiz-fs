@@ -333,6 +333,7 @@ func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 	list := cache.SecretList()
 	assert.Len(list, 2)
 	assert.Contains(list, *fixture1)
+	assert.Contains(list, *fixture2)
 	assert.Equal(2, cache.Len())
 
 	// Advance clock, cache should now have only 1 element
