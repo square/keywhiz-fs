@@ -113,10 +113,13 @@ func (m *SecretMap) Replace(m2 *SecretMap) {
 	// Delete existing entries
 	expire := m.getNow().Add(m.timeouts.DeletionDelay)
 	for k, v := range m.m {
-		if v.ttl.IsZero() {
+		// Only hold on to secrets which actually have data.
+		if len(v.Secret.Content) == 0 {
+			delete(m.m, k)
+		} else if v.ttl.IsZero() {
 			v.ttl = expire
+			m.m[k] = v
 		}
-		m.m[k] = v
 	}
 
 	// Replace values with data from m2

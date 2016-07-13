@@ -333,6 +333,7 @@ func TestCacheSecretListUsesClientOverCache(t *testing.T) {
 	list := cache.SecretList()
 	assert.Len(list, 2)
 	assert.Contains(list, *fixture1)
+	assert.Contains(list, *fixture2)
 	assert.Equal(2, cache.Len())
 
 	// Advance clock, cache should now have only 1 element
@@ -374,6 +375,25 @@ func TestCacheSecretListDoesNotOverrideWithEmptyContent(t *testing.T) {
 	assert.Contains(list, *secretFixture)
 	assert.Equal(1, cache.Len())
 }
+
+func TestCacheSecretListDoesNotReturnDeletedEmptyContentSecrets(t *testing.T) {
+	assert := assert.New(t)
+
+	secretFixture, _ := ParseSecret(fixture("secret.json"))
+	secretFixture.Content = []byte{}
+
+	fake_clock := time.Now()
+	cache := NewCache(DeletedBackend{}, timeouts, logConfig, func() time.Time { return fake_clock })
+	secret, ok := cache.Secret(secretFixture.Name)
+	assert.False(ok)
+	assert.Nil(secret)
+
+	cache.Add(*secretFixture)
+
+	list := cache.SecretList()
+	assert.Len(list, 0)
+}
+
 
 // An interesting test to write might be a combination of data being returned and deleted.
 // E.g.
