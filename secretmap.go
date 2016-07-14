@@ -153,12 +153,3 @@ func (m *SecretMap) Values() []SecretTime {
 func (m *SecretMap) Len() int {
 	return len(m.Values())
 }
-
-// Overwrite will copy and overwrite data from another SecretMap.
-func (m *SecretMap) Overwrite(m2 *SecretMap) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	m2.lock.Lock()
-	defer m2.lock.Unlock()
-	m.m = m2.m
-}

@@ -66,13 +66,11 @@ func NewCache(backend SecretBackend, timeouts Timeouts, logConfig log.Config, no
 // Should only be called after creating a new cache on startup.
 func (c *Cache) Warmup() {
 	// Attempt to warmup cache
-	newMap := NewSecretMap(c.timeouts, c.now)
 	secrets, ok := c.backend.SecretList()
 	if ok {
 		for _, backendSecret := range secrets {
-			newMap.Put(backendSecret.Name, backendSecret)
+			c.secretMap.Put(backendSecret.Name, backendSecret)
 		}
-		c.secretMap.Overwrite(newMap)
 	} else {
 		c.Warnf("Failed to warmup cache on startup")
 	}
