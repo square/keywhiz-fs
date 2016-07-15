@@ -66,25 +66,6 @@ func TestSecretMapOperations(t *testing.T) {
 	assert.Len(values, 0)
 }
 
-func TestSecretMapOverwrite(t *testing.T) {
-	assert := assert.New(t)
-
-	s, err := ParseSecret(fixture("secret.json"))
-	assert.NoError(err)
-
-	secretMap := NewSecretMap(timeouts, nil)
-	secretMap.Put("foo", Secret{})
-
-	newMap := NewSecretMap(timeouts, nil)
-	newMap.Put("bar", *s)
-	secretMap.Overwrite(newMap)
-
-	assert.Equal(1, secretMap.Len())
-	lookup, ok := secretMap.Get("bar")
-	assert.True(ok)
-	assert.Equal(*s, lookup.Secret)
-}
-
 func TestSecretMapTimestamp(t *testing.T) {
 	assert := assert.New(t)
 
