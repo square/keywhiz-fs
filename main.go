@@ -22,13 +22,14 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/alecthomas/kingpin.v2"
+
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/rcrowley/go-metrics"
 	"github.com/square/go-sq-metrics"
 	klog "github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -70,6 +71,8 @@ func main() {
 		lockMemory()
 	}
 
+	// TODO: move time limit settings to config file?
+	// TODO: or at least make it consistent? some are set here, some are set above with app.Flag()
 	freshThreshold := *cacheTimeout
 	backendDeadline := 5 * time.Second
 	maxWait := *timeout + backendDeadline

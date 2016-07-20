@@ -103,12 +103,12 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 
 	if cacheResult != nil {
 		secret = &cacheResult.Secret
-		success = true
-	}
+		success = !cacheResult.deleted
 
-	// If cache succeeded, and entry is very recent, return cache result
-	if success && (time.Since(cacheResult.Time) < c.timeouts.Fresh) {
-		return &cacheResult.Secret, success
+		// immediately return fresh cache result
+		if time.Since(cacheResult.Time) < c.timeouts.Fresh {
+			return secret, success
+		}
 	}
 
 	backendDeadline := time.After(c.timeouts.BackendDeadline)
@@ -119,8 +119,7 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 		if s.err == nil {
 			secret = s.secret
 			success = true
-		}
-		if _, ok := s.err.(SecretDeleted); ok {
+		} else if _, ok := s.err.(SecretDeleted); ok {
 			c.secretMap.Delete(name)
 		}
 	case <-backendDeadline:
@@ -154,11 +153,13 @@ func (c *Cache) SecretList() []Secret {
 // Add inserts a secret into the cache. If a secret is already in the cache with a matching
 // identifier, it will be overridden  This method is most useful for testing since lookups
 // may add data to the cache.
+// only used by tests
 func (c *Cache) Add(s Secret) {
 	c.secretMap.Put(s.Name, s)
 }
 
 // Len returns the number of values stored in the cache. This method is most useful for testing.
+// only used by tests
 func (c *Cache) Len() int {
 	return c.secretMap.Len()
 }
@@ -166,7 +167,7 @@ func (c *Cache) Len() int {
 // cacheSecret retrieves a secret from the cache.
 func (c *Cache) cacheSecret(name string) *SecretTime {
 	secret, ok := c.secretMap.Get(name)
-	if ok && len(secret.Secret.Content) > 0 {
+	if ok && (len(secret.Secret.Content) > 0 || secret.deleted) {
 		c.Debugf("Cache hit: %v", name)
 		return &secret
 	}
@@ -176,12 +177,7 @@ func (c *Cache) cacheSecret(name string) *SecretTime {
 
 // cacheSecretList retrieves a secret listing from the cache.
 func (c *Cache) cacheSecretList() []Secret {
-	values := c.secretMap.Values()
-	secrets := make([]Secret, len(values))
-	for i, v := range values {
-		secrets[i] = v.Secret
-	}
-	return secrets
+	return c.secretMap.Values()
 }
 
 // backendSecret retrieves a secret from the backend and updates the cache.
@@ -216,33 +212,20 @@ func (c *Cache) backendSecretList() chan []Secret {
 
 		newMap := NewSecretMap(c.timeouts, c.now)
 		for _, backendSecret := range secrets {
-			if len(backendSecret.Content) == 0 {
-				// The backend didn't return any content. The cache might contain a secret with content, in
-				// which case we want to keep the cache's value (and not schedule it for delayed deletion).
-				if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
-					newMap.Put(backendSecret.Name, s.Secret)
-				} else {
-					// We don't have content for this secret. This happens when the cache has never seen a given secret
-					// (at startup or when a new secret is added).
-					// can happen.
-					newMap.Put(backendSecret.Name, backendSecret)
-				}
+			// The cache might contain a secret with content, in which case we want to keep the cache's
+			// value (and not schedule it for delayed deletion).
+			if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
+				newMap.Put(backendSecret.Name, s.Secret)
 			} else {
-				// TODO: explain why this case can happen. It doesn't seem like it can,
-				// listing secrets always returns just the names.
-				// Cache the latest info.
+				// We don't have content for this secret. This happens when the cache has never seen a given secret
+				// (at startup or when a new secret is added).
+				// can happen.
 				newMap.Put(backendSecret.Name, backendSecret)
 			}
 		}
 		c.secretMap.Replace(newMap)
 
-		// TODO: copy-pasta from cacheSecretList(), should refactor.
-		values := c.secretMap.Values()
-		secrets = make([]Secret, len(values))
-		for i, v := range values {
-			secrets[i] = v.Secret
-		}
-		secretsc <- secrets
+		secretsc <- c.cacheSecretList()
 		close(secretsc)
 	}()
 	return secretsc

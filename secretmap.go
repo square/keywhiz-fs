@@ -33,9 +33,10 @@ type SecretMap struct {
 // set a time to live. If the ttl value is 0, we keep the secret until it gets deleted
 // and its ttl changes.
 type SecretTime struct {
-	Secret Secret
-	Time   time.Time
-	ttl    time.Time
+	Secret  Secret
+	Time    time.Time
+	ttl     time.Time
+	deleted bool
 }
 
 // NewSecretMap initializes a new SecretMap.
@@ -62,7 +63,7 @@ func (m *SecretMap) Get(key string) (s SecretTime, ok bool) {
 	s, ok = m.m[key]
 	if ok && isExpired(s, m.getNow()) {
 		delete(m.m, key)
-		return SecretTime{}, false
+		return SecretTime{deleted: true}, false
 	}
 	return
 }
@@ -72,7 +73,7 @@ func (m *SecretMap) Put(key string, value Secret) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	m.m[key] = SecretTime{value, m.getNow(), time.Time{}}
+	m.m[key] = SecretTime{value, m.getNow(), time.Time{}, false}
 }
 
 // Schedules an entry for deletion.
@@ -91,6 +92,7 @@ func (m *SecretMap) Delete(key string) {
 
 // Schedules all values for deletion. Entries will be dropped if they aren't put back
 // before DeletionDelay elapses.
+// only used by tests
 func (m *SecretMap) DeleteAll() {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -129,18 +131,18 @@ func (m *SecretMap) Replace(m2 *SecretMap) {
 }
 
 // Values returns a slice of stored secrets in no particular order.
-func (m *SecretMap) Values() []SecretTime {
+func (m *SecretMap) Values() []Secret {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	values := make([]SecretTime, len(m.m))
+	values := make([]Secret, len(m.m))
 	i := 0
 	now := m.getNow()
 	for key, value := range m.m {
 		if isExpired(value, now) {
 			delete(m.m, key)
 		} else {
-			values[i] = value
+			values[i] = value.Secret
 			i++
 		}
 	}
