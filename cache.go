@@ -221,21 +221,14 @@ func (c *Cache) backendSecretList() chan []Secret {
 
 		newMap := NewSecretMap(c.timeouts, c.now)
 		for _, backendSecret := range secrets {
-			if len(backendSecret.Content) == 0 {
-				// The backend didn't return any content. The cache might contain a secret with content, in
-				// which case we want to keep the cache's value (and not schedule it for delayed deletion).
-				if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
-					newMap.Put(backendSecret.Name, s.Secret)
-				} else {
-					// We don't have content for this secret. This happens when the cache has never seen a given secret
-					// (at startup or when a new secret is added).
-					// can happen.
-					newMap.Put(backendSecret.Name, backendSecret)
-				}
+			// The cache might contain a secret with content, in which case we want to keep the cache's
+			// value (and not schedule it for delayed deletion).
+			if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
+				newMap.Put(backendSecret.Name, s.Secret)
 			} else {
-				// TODO: explain why this case can happen. It doesn't seem like it can,
-				// listing secrets always returns just the names.
-				// Cache the latest info.
+				// We don't have content for this secret. This happens when the cache has never seen a given secret
+				// (at startup or when a new secret is added).
+				// can happen.
 				newMap.Put(backendSecret.Name, backendSecret)
 			}
 		}
