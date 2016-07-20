@@ -19,7 +19,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"square/up/service/metrics"
 	"strings"
 	"time"
 
@@ -27,6 +26,7 @@ import (
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
+	"github.com/rcrowley/go-metrics"
 	"github.com/square/go-sq-metrics"
 	klog "github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"

@@ -135,8 +135,6 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 //  * If backend returns fast: update cache, return.
 //  * If timeout backend deadline: return cache entries, background update cache.
 //  * If timeout max wait: return cache version.
-// TODO: why do we prefer the backend to the cache? is cache intended only to be local backup?
-// TODO: could we track list freshness and prefer a fresh cache list to avoid pulling from backend?
 func (c *Cache) SecretList() []Secret {
 	backendDeadline := time.After(c.timeouts.BackendDeadline)
 	backendDone := c.backendSecretList()
@@ -179,14 +177,7 @@ func (c *Cache) cacheSecret(name string) *SecretTime {
 
 // cacheSecretList retrieves a secret listing from the cache.
 func (c *Cache) cacheSecretList() []Secret {
-	values := c.secretMap.Values()
-	secrets := make([]Secret, len(values))
-	// TODO: is it necessary to gather the list in secretmap.Values() and then copy it one by one to another
-	// TODO: list with no change/processing/etc? seems inefficient, can it be improved?
-	for i, v := range values {
-		secrets[i] = v.Secret
-	}
-	return secrets
+	return c.secretMap.Values()
 }
 
 // backendSecret retrieves a secret from the backend and updates the cache.
@@ -234,13 +225,7 @@ func (c *Cache) backendSecretList() chan []Secret {
 		}
 		c.secretMap.Replace(newMap)
 
-		// TODO: copy-pasta from cacheSecretList(), should refactor.
-		values := c.secretMap.Values()
-		secrets = make([]Secret, len(values))
-		for i, v := range values {
-			secrets[i] = v.Secret
-		}
-		secretsc <- secrets
+		secretsc <- c.cacheSecretList()
 		close(secretsc)
 	}()
 	return secretsc

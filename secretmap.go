@@ -131,18 +131,18 @@ func (m *SecretMap) Replace(m2 *SecretMap) {
 }
 
 // Values returns a slice of stored secrets in no particular order.
-func (m *SecretMap) Values() []SecretTime {
+func (m *SecretMap) Values() []Secret {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	values := make([]SecretTime, len(m.m))
+	values := make([]Secret, len(m.m))
 	i := 0
 	now := m.getNow()
 	for key, value := range m.m {
 		if isExpired(value, now) {
 			delete(m.m, key)
 		} else {
-			values[i] = value
+			values[i] = value.Secret
 			i++
 		}
 	}

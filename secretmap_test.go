@@ -41,7 +41,7 @@ func TestSecretMapOperations(t *testing.T) {
 
 	values := secretMap.Values()
 	assert.Len(values, 1)
-	assert.Equal(*s, values[0].Secret)
+	assert.Equal(*s, values[0])
 
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
@@ -59,7 +59,7 @@ func TestSecretMapOperations(t *testing.T) {
 	// Secret should still exist for a short amount of time
 	values = secretMap.Values()
 	assert.Len(values, 1)
-	assert.Equal(*s, values[0].Secret)
+	assert.Equal(*s, values[0])
 	// Advance current time by more than an hour, secret should now be gone
 	fake_now = fake_now.Add(2 * time.Hour)
 	values = secretMap.Values()
