@@ -86,6 +86,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("KeywhizFs init fail: %v\n", err)
 	}
+	kwfs.Cache.Warmup()
 
 	mountOptions := &fuse.MountOptions{
 		AllowOther: true,
@@ -114,7 +115,6 @@ func main() {
 		}
 	}()
 
-	kwfs.Cache.Warmup()
 	server.Serve()
 	logger.Infof("Exiting")
 }
