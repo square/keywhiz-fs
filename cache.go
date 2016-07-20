@@ -103,12 +103,12 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 
 	if cacheResult != nil {
 		secret = &cacheResult.Secret
-		success = true
-	}
+		success = !cacheResult.deleted
 
-	// If cache succeeded, and entry is very recent, return cache result
-	if success && (time.Since(cacheResult.Time) < c.timeouts.Fresh) {
-		return &cacheResult.Secret, success
+		// immediately return fresh cache result
+		if time.Since(cacheResult.Time) < c.timeouts.Fresh {
+			return secret, success
+		}
 	}
 
 	backendDeadline := time.After(c.timeouts.BackendDeadline)
@@ -119,8 +119,7 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 		if s.err == nil {
 			secret = s.secret
 			success = true
-		}
-		if _, ok := s.err.(SecretDeleted); ok {
+		} else if _, ok := s.err.(SecretDeleted); ok {
 			c.secretMap.Delete(name)
 		}
 	case <-backendDeadline:
@@ -136,6 +135,8 @@ func (c *Cache) Secret(name string) (*Secret, bool) {
 //  * If backend returns fast: update cache, return.
 //  * If timeout backend deadline: return cache entries, background update cache.
 //  * If timeout max wait: return cache version.
+// TODO: why do we prefer the backend to the cache? is cache intended only to be local backup?
+// TODO: could we track list freshness and prefer a fresh cache list to avoid pulling from backend?
 func (c *Cache) SecretList() []Secret {
 	backendDeadline := time.After(c.timeouts.BackendDeadline)
 	backendDone := c.backendSecretList()
@@ -154,11 +155,13 @@ func (c *Cache) SecretList() []Secret {
 // Add inserts a secret into the cache. If a secret is already in the cache with a matching
 // identifier, it will be overridden  This method is most useful for testing since lookups
 // may add data to the cache.
+// only used by tests
 func (c *Cache) Add(s Secret) {
 	c.secretMap.Put(s.Name, s)
 }
 
 // Len returns the number of values stored in the cache. This method is most useful for testing.
+// only used by tests
 func (c *Cache) Len() int {
 	return c.secretMap.Len()
 }
@@ -166,7 +169,7 @@ func (c *Cache) Len() int {
 // cacheSecret retrieves a secret from the cache.
 func (c *Cache) cacheSecret(name string) *SecretTime {
 	secret, ok := c.secretMap.Get(name)
-	if ok && len(secret.Secret.Content) > 0 {
+	if ok && (len(secret.Secret.Content) > 0 || secret.deleted) {
 		c.Debugf("Cache hit: %v", name)
 		return &secret
 	}
@@ -178,6 +181,8 @@ func (c *Cache) cacheSecret(name string) *SecretTime {
 func (c *Cache) cacheSecretList() []Secret {
 	values := c.secretMap.Values()
 	secrets := make([]Secret, len(values))
+	// TODO: is it necessary to gather the list in secretmap.Values() and then copy it one by one to another
+	// TODO: list with no change/processing/etc? seems inefficient, can it be improved?
 	for i, v := range values {
 		secrets[i] = v.Secret
 	}
