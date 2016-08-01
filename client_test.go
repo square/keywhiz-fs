@@ -49,7 +49,8 @@ func TestClientCallsServer(t *testing.T) {
 	defer server.Close()
 
 	serverURL, _ := url.Parse(server.URL)
-	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig)
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
+	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig, metricsHandle)
 
 	secrets, ok := client.SecretList()
 	assert.True(ok)
@@ -76,7 +77,8 @@ func TestClientRefresh(t *testing.T) {
 	clientRefresh = 1 * time.Second
 
 	serverURL, _ := url.Parse("http://dummy:8080")
-	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig)
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
+	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig, metricsHandle)
 	http1 := client.http()
 	time.Sleep(5 * time.Second)
 	http2 := client.http()
@@ -104,7 +106,8 @@ func TestClientCallsServerErrors(t *testing.T) {
 	defer server.Close()
 
 	serverURL, _ := url.Parse(server.URL)
-	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig)
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
+	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig, metricsHandle)
 
 	secrets, ok := client.SecretList()
 	assert.False(ok)
@@ -144,7 +147,8 @@ func TestClientParsingError(t *testing.T) {
 	defer server.Close()
 
 	serverURL, _ := url.Parse(server.URL)
-	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig)
+	metricsHandle := setupMetrics(metricsURL, metricsPrefix, *mountpoint)
+	client := NewClient(clientFile, clientFile, testCaFile, serverURL, time.Second, logConfig, metricsHandle)
 
 	secrets, ok := client.SecretList()
 	assert.False(ok)

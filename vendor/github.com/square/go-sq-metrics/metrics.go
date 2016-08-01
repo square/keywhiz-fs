@@ -20,6 +20,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 	"runtime"
@@ -30,26 +32,30 @@ import (
 
 // SquareMetrics posts metrics to an HTTP/JSON bridge endpoint
 type SquareMetrics struct {
-	registry metrics.Registry
+	Registry metrics.Registry
 	url      string
 	prefix   string
 	hostname string
 	interval time.Duration
+	logger   *log.Logger
+	client   *http.Client
 }
 
 // NewMetrics is the entry point for this code
-func NewMetrics(metricsURL, metricsPrefix string, interval time.Duration, registry metrics.Registry) *SquareMetrics {
+func NewMetrics(metricsURL, metricsPrefix string, client *http.Client, interval time.Duration, registry metrics.Registry, logger *log.Logger) *SquareMetrics {
 	hostname, err := os.Hostname()
 	if err != nil {
 		panic(err)
 	}
 
 	metrics := &SquareMetrics{
-		registry: registry,
+		Registry: registry,
 		url:      metricsURL,
 		prefix:   metricsPrefix,
 		hostname: hostname,
 		interval: interval,
+		logger:   logger,
+		client:   client,
 	}
 
 	if metricsURL != "" {
@@ -72,7 +78,10 @@ func (mb *SquareMetrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Publish metrics to bridge
 func (mb *SquareMetrics) publishMetrics() {
 	for range time.Tick(mb.interval) {
-		mb.postMetrics()
+		err := mb.postMetrics()
+		if err != nil && err != io.EOF {
+			mb.logger.Printf("error reporting metrics: %s", err)
+		}
 	}
 }
 
@@ -81,15 +90,15 @@ func (mb *SquareMetrics) collectSystemMetrics() {
 	var mem runtime.MemStats
 
 	update := func(name string, value uint64) {
-		metrics.GetOrRegisterGauge(name, mb.registry).Update(int64(value))
+		metrics.GetOrRegisterGauge(name, mb.Registry).Update(int64(value))
 	}
 
 	updateFloat := func(name string, value float64) {
-		metrics.GetOrRegisterGaugeFloat64(name, mb.registry).Update(value)
+		metrics.GetOrRegisterGaugeFloat64(name, mb.Registry).Update(value)
 	}
 
 	sample := metrics.NewExpDecaySample(1028, 0.015)
-	gcHistogram := metrics.GetOrRegisterHistogram("runtime.mem.gc.duration", mb.registry, sample)
+	gcHistogram := metrics.GetOrRegisterHistogram("runtime.mem.gc.duration", mb.Registry, sample)
 
 	var observedPauses uint32
 	for range time.Tick(mb.interval) {
@@ -125,16 +134,17 @@ func (mb *SquareMetrics) collectSystemMetrics() {
 	}
 }
 
-func (mb *SquareMetrics) postMetrics() {
+func (mb *SquareMetrics) postMetrics() error {
 	metrics := mb.SerializeMetrics()
 	raw, err := json.Marshal(metrics)
 	if err != nil {
 		panic(err)
 	}
-	resp, err := http.Post(mb.url, "application/json", bytes.NewReader(raw))
-	if err == nil {
-		resp.Body.Close()
+	resp, err := mb.client.Post(mb.url, "application/json", bytes.NewReader(raw))
+	if resp != nil {
+		defer resp.Body.Close()
 	}
+	return err
 }
 
 func (mb *SquareMetrics) serializeMetric(now int64, metric tuple) map[string]interface{} {
@@ -155,7 +165,7 @@ type tuple struct {
 func (mb *SquareMetrics) SerializeMetrics() []map[string]interface{} {
 	nvs := []tuple{}
 
-	mb.registry.Each(func(name string, i interface{}) {
+	mb.Registry.Each(func(name string, i interface{}) {
 		switch metric := i.(type) {
 		case metrics.Counter:
 			nvs = append(nvs, tuple{name, metric.Count()})
