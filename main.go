@@ -24,6 +24,8 @@ import (
 
 	"gopkg.in/alecthomas/kingpin.v2"
 
+	"net/http"
+
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/rcrowley/go-metrics"
@@ -79,7 +81,7 @@ func main() {
 	delayDeletion := 1 * time.Hour
 	timeouts := Timeouts{freshThreshold, backendDeadline, maxWait, delayDeletion}
 
-	client := NewClient(*certFile, *keyFile, *caFile, *serverURL, *timeout, logConfig)
+	client := NewClient(*certFile, *keyFile, *caFile, *serverURL, *timeout, logConfig, metricsHandle)
 
 	ownership := NewOwnership(*asuser, *asgroup)
 	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, metricsHandle, logConfig)
@@ -137,7 +139,7 @@ func setupMetrics(metricsURL *string, metricsPrefix *string, mountpoint string) 
 		prefix = fmt.Sprintf("keywhizfs.%s", strings.Replace(strings.Replace(mountpoint, "-", "--", -1), "/", "-", -1))
 	}
 
-	return sqmetrics.NewMetrics(*metricsURL, prefix, (30 * time.Second), metrics.DefaultRegistry)
+	return sqmetrics.NewMetrics(*metricsURL, prefix, http.DefaultClient, (30 * time.Second), metrics.DefaultRegistry, &log.Logger{})
 }
 
 // Locks memory, preventing memory from being written to disk as swap

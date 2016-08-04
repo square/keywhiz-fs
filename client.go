@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/rcrowley/go-metrics"
+	"github.com/square/go-sq-metrics"
 	klog "github.com/square/keywhiz-fs/log"
 )
 
@@ -46,9 +48,11 @@ var ciphers = []uint16{
 // Client basic struct.
 type Client struct {
 	*klog.Logger
-	http   func() *http.Client
-	url    *url.URL
-	params httpClientParams
+	http        func() *http.Client
+	url         *url.URL
+	params      httpClientParams
+	failCount   metrics.Counter
+	lastSuccess metrics.Gauge
 }
 
 // httpClientParams are values necessary for constructing a TLS client.
@@ -65,11 +69,23 @@ func (e SecretDeleted) Error() string {
 	return "deleted"
 }
 
+func (c Client) failCountInc() {
+	c.failCount.Inc(1)
+}
+
+func (c Client) markSuccess() {
+	c.failCount.Clear()
+	c.lastSuccess.Update(time.Now().Unix())
+}
+
 // NewClient produces a read-to-use client struct given PEM-encoded certificate file, key file, and
 // ca file with the list of trusted certificate authorities.
-func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config) (client Client) {
+func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout time.Duration, logConfig klog.Config, metricsHandle *sqmetrics.SquareMetrics) (client Client) {
 	logger := klog.New("kwfs_client", logConfig)
 	params := httpClientParams{certFile, keyFile, caFile, timeout}
+
+	failCount := metrics.GetOrRegisterCounter("runtime.server.fails", metricsHandle.Registry)
+	lastSuccess := metrics.GetOrRegisterGauge("runtime.server.lastsuccess", metricsHandle.Registry)
 
 	reqc := make(chan *http.Client)
 
@@ -100,7 +116,7 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 		}
 	}()
 
-	return Client{logger, getClient, serverURL, params}
+	return Client{logger, getClient, serverURL, params, failCount, lastSuccess}
 }
 
 // ServerStatus returns raw JSON from the server's _status endpoint
@@ -133,6 +149,7 @@ func (c Client) RawSecret(name string) (data []byte, err error) {
 	resp, err := c.http().Get(t.String())
 	if err != nil {
 		c.Errorf("Error retrieving secret %v: %v", name, err)
+		c.failCountInc()
 		return nil, err
 	}
 	c.Infof("GET /secret/%v %d %v", name, resp.StatusCode, time.Since(now))
@@ -141,11 +158,13 @@ func (c Client) RawSecret(name string) (data []byte, err error) {
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		c.Errorf("Error reading response body for secret %v: %v", name, err)
+		c.failCountInc()
 		return nil, err
 	}
 
 	switch resp.StatusCode {
 	case 200:
+		c.markSuccess()
 		return data, nil
 	case 404:
 		c.Warnf("Secret %v not found", name)
@@ -153,11 +172,15 @@ func (c Client) RawSecret(name string) (data []byte, err error) {
 	default:
 		msg := strings.Join(strings.Split(string(data), "\n"), " ")
 		c.Errorf("Bad response code getting secret %v: (status=%v, msg='%s')", name, resp.StatusCode, msg)
+		c.failCountInc()
 		return nil, errors.New(msg)
 	}
 }
 
 // Secret returns an unmarshalled Secret struct after requesting a secret.
+// only used by tests
+// TODO: do we need this?
+// TODO: https://github.com/square/keywhiz-fs/issues/77
 func (c Client) Secret(name string) (secret *Secret, err error) {
 	data, err := c.RawSecret(name)
 	if err != nil {
@@ -181,6 +204,7 @@ func (c Client) RawSecretList() (data []byte, ok bool) {
 	resp, err := c.http().Get(t.String())
 	if err != nil {
 		c.Errorf("Error retrieving secrets: %v", err)
+		c.failCountInc()
 		return nil, false
 	}
 	c.Infof("GET /secrets %d %v", resp.StatusCode, time.Since(now))
@@ -189,18 +213,24 @@ func (c Client) RawSecretList() (data []byte, ok bool) {
 	data, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
 		c.Errorf("Error reading response body for secrets: %v", err)
+		c.failCountInc()
 		return nil, false
 	}
 
 	if resp.StatusCode != 200 {
 		msg := strings.Join(strings.Split(string(data), "\n"), " ")
 		c.Errorf("Bad response code getting secrets: (status=%v, msg='%s')", resp.StatusCode, msg)
+		c.failCountInc()
 		return nil, false
 	}
+	c.markSuccess()
 	return data, true
 }
 
 // SecretList returns a slice of unmarshalled Secret structs after requesting a listing of secrets.
+// only used by tests
+// TODO: do we need this?
+// TODO: https://github.com/square/keywhiz-fs/issues/77
 func (c Client) SecretList() (secrets []Secret, ok bool) {
 	data, ok := c.RawSecretList()
 	if !ok {
