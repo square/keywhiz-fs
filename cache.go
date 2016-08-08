@@ -69,7 +69,7 @@ func (c *Cache) Warmup() {
 	secrets, ok := c.backend.SecretList()
 	if ok {
 		for _, backendSecret := range secrets {
-			c.secretMap.Put(backendSecret.Name, backendSecret)
+			c.secretMap.Put(backendSecret.Name, backendSecret, time.Time{})
 		}
 	} else {
 		c.Warnf("Failed to warmup cache on startup")
@@ -155,7 +155,7 @@ func (c *Cache) SecretList() []Secret {
 // may add data to the cache.
 // only used by tests
 func (c *Cache) Add(s Secret) {
-	c.secretMap.Put(s.Name, s)
+	c.secretMap.Put(s.Name, s, time.Time{})
 }
 
 // Len returns the number of values stored in the cache. This method is most useful for testing.
@@ -191,7 +191,7 @@ func (c *Cache) backendSecret(name string) chan secretResult {
 		secret, err := c.backend.Secret(name)
 		secretc <- secretResult{secret, err}
 		if err == nil {
-			c.secretMap.Put(name, *secret)
+			c.secretMap.Put(name, *secret, time.Time{})
 		}
 	}()
 	return secretc
@@ -215,12 +215,12 @@ func (c *Cache) backendSecretList() chan []Secret {
 			// The cache might contain a secret with content, in which case we want to keep the cache's
 			// value (and not schedule it for delayed deletion).
 			if s, ok := c.secretMap.Get(backendSecret.Name); ok && len(s.Secret.Content) > 0 {
-				newMap.Put(backendSecret.Name, s.Secret)
+				newMap.Put(backendSecret.Name, s.Secret, s.Time)
 			} else {
 				// We don't have content for this secret. This happens when the cache has never seen a given secret
 				// (at startup or when a new secret is added).
 				// can happen.
-				newMap.Put(backendSecret.Name, backendSecret)
+				newMap.Put(backendSecret.Name, backendSecret, time.Time{})
 			}
 		}
 		c.secretMap.Replace(newMap)

@@ -69,11 +69,14 @@ func (m *SecretMap) Get(key string) (s SecretTime, ok bool) {
 }
 
 // Put places a value in the map with a key, possibly overwriting an existing entry.
-func (m *SecretMap) Put(key string, value Secret) {
+func (m *SecretMap) Put(key string, value Secret, updated time.Time) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	m.m[key] = SecretTime{value, m.getNow(), time.Time{}, false}
+	if updated.Equal(time.Time{}) {
+		updated = m.getNow()
+	}
+	m.m[key] = SecretTime{value, updated, time.Time{}, false}
 }
 
 // Schedules an entry for deletion.

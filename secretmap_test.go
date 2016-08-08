@@ -36,7 +36,7 @@ func TestSecretMapOperations(t *testing.T) {
 	lookup, ok := secretMap.Get("foo")
 	assert.False(ok)
 
-	secretMap.Put("foo", *s)
+	secretMap.Put("foo", *s, time.Time{})
 	assert.Equal(1, secretMap.Len())
 
 	values := secretMap.Values()
@@ -47,14 +47,14 @@ func TestSecretMapOperations(t *testing.T) {
 	assert.True(ok)
 	assert.Equal(*s, lookup.Secret)
 
-	secretMap.Put("foo", Secret{})
+	secretMap.Put("foo", Secret{}, time.Time{})
 
 	lookup, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.NotEqual(*s, lookup.Secret)
 
 	// Put a secret
-	secretMap.Put("foo", *s)
+	secretMap.Put("foo", *s, time.Time{})
 	secretMap.DeleteAll()
 	// Secret should still exist for a short amount of time
 	values = secretMap.Values()
@@ -70,13 +70,13 @@ func TestSecretMapTimestamp(t *testing.T) {
 	assert := assert.New(t)
 
 	secretMap := NewSecretMap(timeouts, nil)
-	secretMap.Put("foo", Secret{})
+	secretMap.Put("foo", Secret{}, time.Time{})
 
 	val, ok := secretMap.Get("foo")
 	assert.True(ok)
 	earlierTime := val.Time
 
-	secretMap.Put("foo", Secret{})
+	secretMap.Put("foo", Secret{}, time.Time{})
 	val, ok = secretMap.Get("foo")
 	assert.True(ok)
 	assert.True(val.Time.After(earlierTime))
