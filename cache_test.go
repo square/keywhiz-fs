@@ -394,6 +394,40 @@ func TestCacheSecretListDoesNotReturnDeletedEmptyContentSecrets(t *testing.T) {
 	assert.Len(list, 0)
 }
 
+func TestClientSecretListDoesNotFreshenCache(t *testing.T) {
+	assert := assert.New(t)
+
+	fixture1, _ := ParseSecret(fixture("secret.json"))
+	fixture2, _ := ParseSecret(fixture("secretNormalOwner.json"))
+	fixture2.Name = fixture1.Name
+
+	secretc := make(chan *Secret, 1)
+	secretListc := make(chan []Secret, 1)
+	backend := ChannelBackend{secretc: secretc, secretListc: secretListc}
+	secretc <- fixture1
+	secretListc <- []Secret{*fixture1}
+
+	timeouts.Fresh = 50 * time.Millisecond
+	cache := NewCache(backend, timeouts, logConfig, nil)
+
+	// initially, cache should be fresh and we should get fixture2
+	cache.Add(*fixture2)
+	secret, ok := cache.Secret(fixture2.Name)
+	assert.True(ok)
+	assert.Equal(fixture2, secret)
+
+	// now we go forward in time 25 milliseconds, and get a secretlist
+	time.Sleep(25 * time.Millisecond)
+	_ = cache.SecretList()
+
+	// the listing SHOULD have no effect on the freshness of the secret in the cache
+	// so if we go forward 30ms (past original fresh time), we should get the server version (fixture1)
+	// if this fails, it means cache.SecretList is refreshing the cache times, which it shouldn't
+	time.Sleep(30 * time.Millisecond)
+	secret, ok = cache.Secret(fixture2.Name)
+	assert.True(ok)
+	assert.Equal(fixture1, secret)
+}
 
 // An interesting test to write might be a combination of data being returned and deleted.
 // E.g.

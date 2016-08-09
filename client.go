@@ -178,9 +178,6 @@ func (c Client) RawSecret(name string) (data []byte, err error) {
 }
 
 // Secret returns an unmarshalled Secret struct after requesting a secret.
-// only used by tests
-// TODO: do we need this?
-// TODO: https://github.com/square/keywhiz-fs/issues/77
 func (c Client) Secret(name string) (secret *Secret, err error) {
 	data, err := c.RawSecret(name)
 	if err != nil {
@@ -228,9 +225,6 @@ func (c Client) RawSecretList() (data []byte, ok bool) {
 }
 
 // SecretList returns a slice of unmarshalled Secret structs after requesting a listing of secrets.
-// only used by tests
-// TODO: do we need this?
-// TODO: https://github.com/square/keywhiz-fs/issues/77
 func (c Client) SecretList() (secrets []Secret, ok bool) {
 	data, ok := c.RawSecretList()
 	if !ok {
