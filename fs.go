@@ -28,7 +28,6 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
-	"github.com/square/go-sq-metrics"
 	"github.com/square/keywhiz-fs/log"
 	"golang.org/x/sys/unix"
 )
@@ -259,7 +258,6 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 	case "": // Base directory
 		entries = kwfs.secretsDirListing(
 			fuse.DirEntry{Name: ".clear_cache", Mode: fuse.S_IFREG},
-			fuse.DirEntry{Name: ".json", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: ".running", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
 	case ".json":
