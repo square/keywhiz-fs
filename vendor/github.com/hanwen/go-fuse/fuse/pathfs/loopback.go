@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package pathfs
 
 import (
@@ -21,6 +25,12 @@ type loopbackFileSystem struct {
 // system.  Its main purpose is to provide test coverage without
 // having to build a synthetic filesystem.
 func NewLoopbackFileSystem(root string) FileSystem {
+	// Make sure the Root path is absolute to avoid problems when the
+	// application changes working directory.
+	root, err := filepath.Abs(root)
+	if err != nil {
+		panic(err)
+	}
 	return &loopbackFileSystem{
 		FileSystem: NewDefaultFileSystem(),
 		Root:       root,

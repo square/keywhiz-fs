@@ -8,7 +8,7 @@ imports:
 - name: github.com/alecthomas/units
   version: 2efee857e7cfd4f3d0138cc3cbb1b4966962b93a
 - name: github.com/hanwen/go-fuse
-  version: ed841342e5daf4711f24106b93c1035864a8914b
+  version: e33e399b19f2fc4ad8922d005a1eff55ea9ffcbc
   subpackages:
   - fuse
   - fuse/nodefs

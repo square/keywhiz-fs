@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -7,6 +11,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -24,7 +29,7 @@ func unixgramSocketpair() (l, r *os.File, err error) {
 
 // Create a FUSE FS on the specified mount point.  The returned
 // mount point is always absolute.
-func mount(mountPoint string, options string) (fd int, err error) {
+func mount(mountPoint string, opts *MountOptions, ready chan<- error) (fd int, err error) {
 	local, remote, err := unixgramSocketpair()
 	if err != nil {
 		return
@@ -39,9 +44,8 @@ func mount(mountPoint string, options string) (fd int, err error) {
 	}
 
 	cmd := []string{bin, mountPoint}
-	if options != "" {
-		cmd = append(cmd, "-o")
-		cmd = append(cmd, options)
+	if s := opts.optionsStrings(); len(s) > 0 {
+		cmd = append(cmd, "-o", strings.Join(s, ","))
 	}
 	proc, err := os.StartProcess(bin,
 		cmd,
@@ -62,7 +66,13 @@ func mount(mountPoint string, options string) (fd int, err error) {
 		return
 	}
 
-	return getConnection(local)
+	fd, err = getConnection(local)
+	if err != nil {
+		return -1, err
+	}
+
+	close(ready)
+	return fd, err
 }
 
 func privilegedUnmount(mountPoint string) error {

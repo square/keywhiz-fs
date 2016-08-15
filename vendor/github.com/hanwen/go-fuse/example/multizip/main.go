@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -23,12 +27,13 @@ func main() {
 
 	fs := zipfs.NewMultiZipFs()
 	nfs := pathfs.NewPathNodeFs(fs, nil)
-	state, _, err := nodefs.MountRoot(flag.Arg(0), nfs.Root(), nil)
+	opts := nodefs.NewOptions()
+	opts.Debug = *debug
+	state, _, err := nodefs.MountRoot(flag.Arg(0), nfs.Root(), opts)
 	if err != nil {
 		fmt.Printf("Mount fail: %v\n", err)
 		os.Exit(1)
 	}
 
-	state.SetDebug(*debug)
 	state.Serve()
 }

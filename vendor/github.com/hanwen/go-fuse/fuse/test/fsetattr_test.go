@@ -1,7 +1,10 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package test
 
 import (
-	"io/ioutil"
 	"os"
 	"syscall"
 	"testing"
@@ -10,6 +13,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/hanwen/go-fuse/internal/testutil"
 )
 
 type MutableDataFile struct {
@@ -101,7 +105,7 @@ type FSetAttrFs struct {
 }
 
 func (fs *FSetAttrFs) GetXAttr(name string, attr string, context *fuse.Context) ([]byte, fuse.Status) {
-	return nil, fuse.ENODATA
+	return nil, fuse.ENOATTR
 }
 
 func (fs *FSetAttrFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
@@ -139,51 +143,35 @@ func NewFile() *MutableDataFile {
 }
 
 func setupFAttrTest(t *testing.T, fs pathfs.FileSystem) (dir string, clean func()) {
-	dir, err := ioutil.TempDir("", "go-fuse-fsetattr_test")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v", err)
-	}
+	dir = testutil.TempDir()
 	nfs := pathfs.NewPathNodeFs(fs, nil)
-	state, _, err := nodefs.MountRoot(dir, nfs.Root(), nil)
+	opts := nodefs.NewOptions()
+	opts.Debug = testutil.VerboseTest()
+
+	state, _, err := nodefs.MountRoot(dir, nfs.Root(), opts)
 	if err != nil {
 		t.Fatalf("MountNodeFileSystem failed: %v", err)
 	}
-	state.SetDebug(VerboseTest())
 
 	go state.Serve()
-
-	// Trigger INIT.
-	os.Lstat(dir)
-	if state.KernelSettings().Flags&fuse.CAP_FILE_OPS == 0 {
-		t.Log("Mount does not support file operations")
+	if err := state.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
 	}
 
-	return dir, func() {
-		if state.Unmount() == nil {
+	clean = func() {
+		if err := state.Unmount(); err != nil {
+			t.Errorf("cleanup: Unmount: %v", err)
+		} else {
 			os.RemoveAll(dir)
 		}
 	}
-}
 
-func TestDataReadLarge(t *testing.T) {
-	fs := &FSetAttrFs{
-		FileSystem: pathfs.NewDefaultFileSystem(),
-	}
-	dir, clean := setupFAttrTest(t, fs)
-	defer clean()
-
-	content := randomData(385 * 1023)
-	fn := dir + "/file"
-	err := ioutil.WriteFile(fn, []byte(content), 0644)
-	if err != nil {
-		t.Fatalf("WriteFile failed: %v", err)
+	if state.KernelSettings().Flags&fuse.CAP_FILE_OPS == 0 {
+		clean()
+		t.Skip("Mount does not support file operations")
 	}
 
-	back, err := ioutil.ReadFile(fn)
-	if err != nil {
-		t.Fatalf("ReadFile failed: %v", err)
-	}
-	CompareSlices(t, back, content)
+	return dir, clean
 }
 
 func TestFSetAttr(t *testing.T) {
@@ -261,12 +249,13 @@ func TestFSetAttr(t *testing.T) {
 		t.Error("Fsync failed:", os.NewSyscallError("Fsync", code))
 	}
 
+	// Close the file, otherwise we can't unmount.
+	f.Close()
+
 	// Shutdown the FUSE FS so we can safely look at fSetAttrFs
 	clean()
 	clean = nil
 	if !fSetAttrFs.file.FsyncCalled {
 		t.Error("Fsync was not called")
 	}
-
-	// TODO - test chown if run as root.
 }

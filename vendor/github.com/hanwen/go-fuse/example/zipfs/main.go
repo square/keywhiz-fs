@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package main
 
 import (
@@ -53,6 +57,7 @@ func main() {
 	opts := &nodefs.Options{
 		AttrTimeout:  time.Duration(*ttl * float64(time.Second)),
 		EntryTimeout: time.Duration(*ttl * float64(time.Second)),
+		Debug:        *debug,
 	}
 	state, _, err := nodefs.MountRoot(flag.Arg(0), root, opts)
 	if err != nil {
@@ -60,7 +65,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	state.SetDebug(*debug)
 	runtime.GC()
 	if profFile != nil {
 		pprof.StartCPUProfile(profFile)

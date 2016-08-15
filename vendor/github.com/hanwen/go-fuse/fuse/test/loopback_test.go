@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package test
 
 import (
@@ -18,6 +22,7 @@ import (
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"github.com/hanwen/go-fuse/fuse/pathfs"
+	"github.com/hanwen/go-fuse/internal/testutil"
 )
 
 const mode uint32 = 0757
@@ -70,10 +75,7 @@ func NewTestCase(t *testing.T) *testCase {
 	const subdir string = "subdir"
 
 	var err error
-	tc.tmpDir, err = ioutil.TempDir("", "go-fuse")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v", err)
-	}
+	tc.tmpDir = testutil.TempDir()
 	tc.orig = tc.tmpDir + "/orig"
 	tc.mnt = tc.tmpDir + "/mnt"
 
@@ -96,20 +98,21 @@ func NewTestCase(t *testing.T) *testCase {
 			EntryTimeout:    testTtl,
 			AttrTimeout:     testTtl,
 			NegativeTimeout: 0.0,
+			Debug:           testutil.VerboseTest(),
 		})
-	tc.connector.SetDebug(VerboseTest())
 	tc.state, err = fuse.NewServer(
-		fuse.NewRawFileSystem(tc.connector.RawFS()), tc.mnt, &fuse.MountOptions{SingleThreaded: true})
+		fuse.NewRawFileSystem(tc.connector.RawFS()), tc.mnt, &fuse.MountOptions{
+			SingleThreaded: true,
+			Debug:          testutil.VerboseTest(),
+		})
 	if err != nil {
 		t.Fatal("NewServer:", err)
 	}
 
-	tc.state.SetDebug(VerboseTest())
-
-	// Unthreaded, but in background.
 	go tc.state.Serve()
-
-	tc.state.WaitMount()
+	if err := tc.state.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
+	}
 	return tc
 }
 
@@ -677,6 +680,20 @@ func TestReadLarge(t *testing.T) {
 	CompareSlices(t, back, content)
 }
 
+func TestWriteLarge(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Cleanup()
+
+	content := randomData(385 * 1023)
+	tc.WriteFile(tc.mountFile, []byte(content), 0644)
+
+	back, err := ioutil.ReadFile(tc.origFile)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	CompareSlices(t, back, content)
+}
+
 func randomLengthString(length int) string {
 	r := rand.Intn(length)
 
@@ -846,13 +863,10 @@ func TestFStatFs(t *testing.T) {
 }
 
 func TestOriginalIsSymlink(t *testing.T) {
-	tmpDir, err := ioutil.TempDir("", "go-fuse-loopback_test")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v", err)
-	}
+	tmpDir := testutil.TempDir()
 	defer os.RemoveAll(tmpDir)
 	orig := tmpDir + "/orig"
-	err = os.Mkdir(orig, 0755)
+	err := os.Mkdir(orig, 0755)
 	if err != nil {
 		t.Fatalf("Mkdir failed: %v", err)
 	}
@@ -874,6 +888,9 @@ func TestOriginalIsSymlink(t *testing.T) {
 	defer state.Unmount()
 
 	go state.Serve()
+	if err := state.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
+	}
 
 	if _, err := os.Lstat(mnt); err != nil {
 		t.Fatalf("Lstat failed: %v", err)
@@ -924,19 +941,19 @@ func TestUmask(t *testing.T) {
 	}
 }
 
-// Check that "." and ".." exists
-func TestSpecialEntries(t *testing.T) {
+// Check that chgrp(1) works
+func TestChgrp(t *testing.T) {
 	tc := NewTestCase(t)
 	defer tc.Cleanup()
 
-	d, err := os.Open(tc.mnt)
+	f, err := os.Create(tc.mnt + "/file")
 	if err != nil {
-		t.Fatalf("Open failed: %v", err)
+		t.Fatalf("Create failed: %v", err)
 	}
-	defer d.Close()
-	buf := make([]byte, 100)
-	n, err := syscall.Getdents(int(d.Fd()), buf)
-	if n == 0 {
-		t.Errorf("directory is empty, entries '.' and '..' are missing")
+	defer f.Close()
+
+	err = f.Chown(-1, os.Getgid())
+	if err != nil {
+		t.Errorf("Chown failed: %v", err)
 	}
 }

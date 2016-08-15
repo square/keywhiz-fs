@@ -1,15 +1,20 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// +build linux
+
 package pathfs
 
 import (
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
+	"github.com/hanwen/go-fuse/internal/testutil"
 )
 
 var xattrGolden = map[string][]byte{
@@ -18,7 +23,6 @@ var xattrGolden = map[string][]byte{
 var xattrFilename = "filename"
 
 type XAttrTestFs struct {
-	tester   *testing.T
 	filename string
 	attrs    map[string][]byte
 
@@ -52,7 +56,6 @@ func (fs *XAttrTestFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, 
 }
 
 func (fs *XAttrTestFs) SetXAttr(name string, attr string, data []byte, flags int, context *fuse.Context) fuse.Status {
-	fs.tester.Log("SetXAttr", name, attr, string(data), flags)
 	if name != fs.filename {
 		return fuse.ENOENT
 	}
@@ -68,9 +71,8 @@ func (fs *XAttrTestFs) GetXAttr(name string, attr string, context *fuse.Context)
 	}
 	v, ok := fs.attrs[attr]
 	if !ok {
-		return nil, fuse.ENODATA
+		return nil, fuse.ENOATTR
 	}
-	fs.tester.Log("GetXAttr", string(v))
 	return v, fuse.OK
 }
 
@@ -90,9 +92,8 @@ func (fs *XAttrTestFs) RemoveXAttr(name string, attr string, context *fuse.Conte
 		return fuse.ENOENT
 	}
 	_, ok := fs.attrs[attr]
-	fs.tester.Log("RemoveXAttr", name, attr, ok)
 	if !ok {
-		return fuse.ENODATA
+		return fuse.ENOATTR
 	}
 	delete(fs.attrs, attr)
 	return fuse.OK
@@ -105,18 +106,14 @@ func readXAttr(p, a string) (val []byte, err error) {
 
 func xattrTestCase(t *testing.T, nm string, m map[string][]byte) (mountPoint string, cleanup func()) {
 	xfs := NewXAttrFs(nm, m)
-	xfs.tester = t
-	mountPoint, err := ioutil.TempDir("", "go-fuse-xattr_test")
-	if err != nil {
-		t.Fatalf("TempDir failed: %v", err)
-	}
+	mountPoint = testutil.TempDir()
 
 	nfs := NewPathNodeFs(xfs, nil)
-	state, _, err := nodefs.MountRoot(mountPoint, nfs.Root(), nil)
+	state, _, err := nodefs.MountRoot(mountPoint, nfs.Root(),
+		&nodefs.Options{Debug: VerboseTest()})
 	if err != nil {
-		t.Fatalf("TempDir failed: %v", err)
+		t.Fatalf("MountRoot failed: %v", err)
 	}
-	state.SetDebug(VerboseTest())
 
 	go state.Serve()
 	return mountPoint, func() {
@@ -199,7 +196,7 @@ func TestXAttrRead(t *testing.T) {
 
 	sysRemovexattr(mounted, "third")
 	val, err = readXAttr(mounted, "third")
-	if err != syscall.ENODATA {
+	if fuse.ToStatus(err) != fuse.ENOATTR {
 		t.Error("Data not removed?", err, val)
 	}
 }

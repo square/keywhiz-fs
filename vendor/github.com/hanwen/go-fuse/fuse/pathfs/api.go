@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package pathfs
 
 import (
@@ -75,4 +79,7 @@ type PathNodeFsOptions struct {
 	// If ClientInodes is set, use Inode returned from GetAttr to
 	// find hard-linked files.
 	ClientInodes bool
+
+	// Debug controls printing of debug information.
+	Debug bool
 }

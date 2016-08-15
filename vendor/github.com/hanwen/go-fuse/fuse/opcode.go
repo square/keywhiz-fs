@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -169,11 +173,16 @@ const _SECURITY_ACL = "system.posix_acl_access"
 const _SECURITY_ACL_DEFAULT = "system.posix_acl_default"
 
 func doGetXAttr(server *Server, req *request) {
+	if server.opts.DisableXAttrs {
+		req.status = ENOSYS
+		return
+	}
+
 	if server.opts.IgnoreSecurityLabels && req.inHeader.Opcode == _OP_GETXATTR {
 		fn := req.filenames[0]
 		if fn == _SECURITY_CAPABILITY || fn == _SECURITY_ACL_DEFAULT ||
 			fn == _SECURITY_ACL {
-			req.status = ENODATA
+			req.status = ENOATTR
 			return
 		}
 	}
@@ -184,6 +193,9 @@ func doGetXAttr(server *Server, req *request) {
 		out := (*GetXAttrOut)(req.outData)
 		switch req.inHeader.Opcode {
 		case _OP_GETXATTR:
+			// TODO(hanwen): double check this. For getxattr, input.Size
+			// field refers to the size of the attribute, so it usually
+			// is not 0.
 			sz, code := server.fileSystem.GetXAttrSize(req.inHeader, req.filenames[0])
 			if code.Ok() {
 				out.Size = uint32(sz)
@@ -254,7 +266,7 @@ func doBatchForget(server *Server, req *request) {
 
 	forgets := *(*[]_ForgetOne)(unsafe.Pointer(h))
 	for i, f := range forgets {
-		if server.debug {
+		if server.opts.Debug {
 			log.Printf("doBatchForget: forgetting %d of %d: NodeId: %d, Nlookup: %d", i+1, len(forgets), f.NodeId, f.Nlookup)
 		}
 		server.fileSystem.Forget(f.NodeId, f.Nlookup)
@@ -583,6 +595,7 @@ func init() {
 		_OP_NOTIFY_INODE:  func(ptr unsafe.Pointer) interface{} { return (*NotifyInvalInodeOut)(ptr) },
 		_OP_NOTIFY_DELETE: func(ptr unsafe.Pointer) interface{} { return (*NotifyInvalDeleteOut)(ptr) },
 		_OP_STATFS:        func(ptr unsafe.Pointer) interface{} { return (*StatfsOut)(ptr) },
+		_OP_SYMLINK:       func(ptr unsafe.Pointer) interface{} { return (*EntryOut)(ptr) },
 	} {
 		operationHandlers[op].DecodeOut = f
 	}

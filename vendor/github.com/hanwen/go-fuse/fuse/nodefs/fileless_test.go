@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package nodefs
 
 import (
@@ -9,14 +13,16 @@ import (
 
 type nodeReadNode struct {
 	Node
+	dir    bool
 	noOpen bool
 	data   []byte
 }
 
-func newNodeReadNode(noOpen bool, d []byte) *nodeReadNode {
+func newNodeReadNode(noOpen, dir bool, d []byte) *nodeReadNode {
 	return &nodeReadNode{
 		Node:   NewDefaultNode(),
 		noOpen: noOpen,
+		dir:    dir,
 		data:   d,
 	}
 }
@@ -36,11 +42,19 @@ func (n *nodeReadNode) Read(file File, dest []byte, off int64, context *fuse.Con
 	return fuse.ReadResultData(n.data[off:int(e)]), fuse.OK
 }
 
+func (n *nodeReadNode) GetAttr(out *fuse.Attr, file File, context *fuse.Context) (code fuse.Status) {
+	if n.dir {
+		out.Mode = fuse.S_IFDIR | 0755
+	} else {
+		out.Mode = fuse.S_IFREG | 0644
+	}
+	out.Size = uint64(len(n.data))
+	return fuse.OK
+}
+
 func (n *nodeReadNode) Lookup(out *fuse.Attr, name string, context *fuse.Context) (*Inode, fuse.Status) {
-	out.Mode = fuse.S_IFREG | 0644
-	out.Size = uint64(len(name))
-	ch := n.Inode().NewChild(name, false, newNodeReadNode(n.noOpen, []byte(name)))
-	return ch, fuse.OK
+	ch := n.Inode().NewChild(name, false, newNodeReadNode(n.noOpen, false, []byte(name)))
+	return ch, ch.Node().GetAttr(out, nil, context)
 }
 
 func TestNoOpen(t *testing.T) {
@@ -49,16 +63,18 @@ func TestNoOpen(t *testing.T) {
 		t.Fatalf("TempDir: %v", err)
 	}
 
-	root := newNodeReadNode(true, nil)
+	root := newNodeReadNode(true, true, nil)
 	root.noOpen = true
 
-	s, _, err := MountRoot(dir, root, nil)
+	s, _, err := MountRoot(dir, root, &Options{Debug: VerboseTest()})
 	if err != nil {
 		t.Fatalf("MountRoot: %v", err)
 	}
-	s.SetDebug(VerboseTest())
 	defer s.Unmount()
 	go s.Serve()
+	if err := s.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
+	}
 
 	if s.KernelSettings().Minor < 23 {
 		t.Skip("Kernel does not support open-less read/writes. Skipping test.")
@@ -90,13 +106,18 @@ func TestNodeRead(t *testing.T) {
 		t.Fatalf("TempDir: %v", err)
 	}
 
-	root := newNodeReadNode(false, nil)
-	s, _, err := MountRoot(dir, root, nil)
+	root := newNodeReadNode(false, true, nil)
+	opts := NewOptions()
+	opts.Debug = VerboseTest()
+	s, _, err := MountRoot(dir, root, opts)
 	if err != nil {
 		t.Fatalf("MountRoot: %v", err)
 	}
 	defer s.Unmount()
 	go s.Serve()
+	if err := s.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
+	}
 	content, err := ioutil.ReadFile(dir + "/file")
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
@@ -105,5 +126,4 @@ func TestNodeRead(t *testing.T) {
 	if string(content) != want {
 		t.Fatalf("got %q, want %q", content, want)
 	}
-
 }

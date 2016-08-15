@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package fuse
 
 import (
@@ -38,7 +42,7 @@ func (me *MknodIn) string() string {
 }
 
 func (me *ReadIn) string() string {
-	return fmt.Sprintf("{Fh %d off %d sz %d %s L %d %s}",
+	return fmt.Sprintf("{Fh %d off %d sz %d %s}",
 		me.Fh, me.Offset, me.Size,
 		FlagString(readFlagNames, int64(me.ReadFlags), ""))
 }
