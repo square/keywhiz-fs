@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package nodefs
 
 import (
@@ -27,30 +31,30 @@ func setupMemNodeTest(t *testing.T) (wd string, root Node, clean func()) {
 			EntryTimeout:    testTtl,
 			AttrTimeout:     testTtl,
 			NegativeTimeout: 0.0,
+			Debug:           VerboseTest(),
 		})
-	connector.SetDebug(VerboseTest())
-	state, err := fuse.NewServer(connector.RawFS(), mnt, nil)
+	state, err := fuse.NewServer(connector.RawFS(), mnt, &fuse.MountOptions{Debug: VerboseTest()})
 	if err != nil {
 		t.Fatal("NewServer", err)
 	}
 
-	//me.state.SetDebug(false)
-	state.SetDebug(VerboseTest())
-
 	// Unthreaded, but in background.
 	go state.Serve()
+
+	if err := state.WaitMount(); err != nil {
+		t.Fatal("WaitMount", err)
+	}
 	return mnt, root, func() {
 		state.Unmount()
 		os.RemoveAll(tmp)
 	}
-
 }
 
 func TestMemNodeFsWrite(t *testing.T) {
 	wd, _, clean := setupMemNodeTest(t)
 	defer clean()
-
 	want := "hello"
+
 	err := ioutil.WriteFile(wd+"/test", []byte(want), 0644)
 	if err != nil {
 		t.Fatalf("WriteFile failed: %v", err)
@@ -62,7 +66,7 @@ func TestMemNodeFsWrite(t *testing.T) {
 	}
 }
 
-func TestMemNodeFs(t *testing.T) {
+func TestMemNodeFsBasic(t *testing.T) {
 	wd, _, clean := setupMemNodeTest(t)
 	defer clean()
 

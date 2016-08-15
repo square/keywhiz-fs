@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package test
 
 import (
@@ -99,5 +103,22 @@ func TestFallocate(t *testing.T) {
 	if fi.Size() < (1024 + 4096) {
 		t.Fatalf("fallocate should have changed file size. Got %d bytes",
 			fi.Size())
+	}
+}
+
+// Check that "." and ".." exists. syscall.Getdents is linux specific.
+func TestSpecialEntries(t *testing.T) {
+	tc := NewTestCase(t)
+	defer tc.Cleanup()
+
+	d, err := os.Open(tc.mnt)
+	if err != nil {
+		t.Fatalf("Open failed: %v", err)
+	}
+	defer d.Close()
+	buf := make([]byte, 100)
+	n, err := syscall.Getdents(int(d.Fd()), buf)
+	if n == 0 {
+		t.Errorf("directory is empty, entries '.' and '..' are missing")
 	}
 }

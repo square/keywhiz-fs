@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package unionfs
 
 import (
@@ -566,7 +570,7 @@ func (fs *unionFS) Chmod(name string, mode uint32, context *fuse.Context) (code 
 func (fs *unionFS) Access(name string, mode uint32, context *fuse.Context) (code fuse.Status) {
 	// We always allow writing.
 	mode = mode &^ fuse.W_OK
-	if name == "" {
+	if name == "" || name == _DROP_CACHE {
 		return fuse.OK
 	}
 	r := fs.getBranch(name)
@@ -704,7 +708,7 @@ func (fs *unionFS) GetAttr(name string, context *fuse.Context) (a *fuse.Attr, s 
 
 func (fs *unionFS) GetXAttr(name string, attr string, context *fuse.Context) ([]byte, fuse.Status) {
 	if name == _DROP_CACHE {
-		return nil, fuse.ENODATA
+		return nil, fuse.ENOATTR
 	}
 	r := fs.getBranch(name)
 	if r.branch >= 0 {

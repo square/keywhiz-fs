@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package nodefs
 
 // This file contains FileSystemConnector's implementation of
@@ -55,6 +59,7 @@ func (c *rawBridge) String() string {
 
 func (c *rawBridge) Init(s *fuse.Server) {
 	c.server = s
+	c.rootNode.Node().OnMount((*FileSystemConnector)(c))
 }
 
 func (c *FileSystemConnector) lookupMountUpdate(out *fuse.Attr, mount *fileSystemMount) (node *Inode, code fuse.Status) {
@@ -139,6 +144,12 @@ func (c *rawBridge) GetAttr(input *fuse.GetAttrIn, out *fuse.AttrOut) (code fuse
 		return code
 	}
 
+	if out.Nlink == 0 {
+		// With Nlink == 0, newer kernels will refuse link
+		// operations.
+		out.Nlink = 1
+	}
+
 	node.mount.fillAttr(out, input.NodeId)
 	return fuse.OK
 }
@@ -201,7 +212,15 @@ func (c *rawBridge) SetAttr(input *fuse.SetAttrIn, out *fuse.AttrOut) (code fuse
 		code = node.fsInode.Chmod(f, permissions, &input.Context)
 	}
 	if code.Ok() && (input.Valid&(fuse.FATTR_UID|fuse.FATTR_GID) != 0) {
-		code = node.fsInode.Chown(f, uint32(input.Uid), uint32(input.Gid), &input.Context)
+		var uid uint32 = ^uint32(0) // means "do not change" in chown(2)
+		var gid uint32 = ^uint32(0)
+		if input.Valid&fuse.FATTR_UID != 0 {
+			uid = input.Uid
+		}
+		if input.Valid&fuse.FATTR_GID != 0 {
+			gid = input.Gid
+		}
+		code = node.fsInode.Chown(f, uid, gid, &input.Context)
 	}
 	if code.Ok() && input.Valid&fuse.FATTR_SIZE != 0 {
 		code = node.fsInode.Truncate(f, input.Size, &input.Context)

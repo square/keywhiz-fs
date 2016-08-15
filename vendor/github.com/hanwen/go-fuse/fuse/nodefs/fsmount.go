@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package nodefs
 
 import (
@@ -27,8 +31,9 @@ type fileSystemMount struct {
 	// Options for the mount.
 	options *Options
 
-	// Protects Children hashmaps within the mount.  treeLock
-	// should be acquired before openFilesLock.
+	// Protects the "children" and "parents" hashmaps of the inodes
+	// within the mount.
+	// treeLock should be acquired before openFilesLock.
 	//
 	// If multiple treeLocks must be acquired, the treeLocks
 	// closer to the root must be acquired first.

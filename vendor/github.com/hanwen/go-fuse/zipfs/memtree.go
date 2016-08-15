@@ -1,3 +1,7 @@
+// Copyright 2016 the Go-FUSE Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package zipfs
 
 import (
@@ -39,9 +43,6 @@ func NewMemTreeFs(files map[string]MemFile) *MemTreeFs {
 
 func (fs *MemTreeFs) String() string {
 	return fs.Name
-}
-
-func (fs *MemTreeFs) SetDebug(bool) {
 }
 
 func (fs *MemTreeFs) Root() nodefs.Node {
