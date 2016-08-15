@@ -324,6 +324,7 @@ func (kwfs KeywhizFs) secretAttr(s *Secret) *fuse.Attr {
 		Mtime: created,
 		Ctime: created,
 		Mode:  s.ModeValue(),
+		Nlink: 1,
 	}
 
 	attr.Uid = kwfs.Ownership.Uid
@@ -347,6 +348,7 @@ func (kwfs KeywhizFs) fileAttr(size uint64, mode uint32) *fuse.Attr {
 		Mtime: created,
 		Ctime: created,
 		Mode:  fuse.S_IFREG | mode,
+		Nlink: 1,
 	}
 	attr.Uid = kwfs.Ownership.Uid
 	attr.Gid = kwfs.Ownership.Gid
