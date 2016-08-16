@@ -66,6 +66,7 @@ func (suite *FsTestSuite) TestSpecialFileAttrs() {
 		{".running", -1, 0444 | fuse.S_IFREG, true},
 		{".clear_cache", 0, 0440 | fuse.S_IFREG, false},
 		{".json", 4096, 0700 | fuse.S_IFDIR, false},
+		{".pprof", 4096, 0700 | fuse.S_IFDIR, false},
 		{".json/secret", 4096, 0700 | fuse.S_IFDIR, false},
 		{".json/secrets", -1, 0400 | fuse.S_IFREG, true},
 	}
@@ -250,6 +251,7 @@ func (suite *FsTestSuite) TestOpenDir() {
 				".running":     true,
 				".clear_cache": true,
 				".json":        false,
+				".pprof":       false,
 				"General_Password..0be68f903f8b7d86": true,
 				"Nobody_PgPass":                      true,
 			},
