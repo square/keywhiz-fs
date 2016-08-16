@@ -35,6 +35,7 @@ import (
 
 const (
 	fsVersion  = "2.0"
+	fsTimeout  = 5 * time.Minute
 	fuseEISDIR = fuse.Status(unix.EISDIR)
 )
 
@@ -65,6 +66,14 @@ type KeywhizFs struct {
 	Metrics   *sqmetrics.SquareMetrics
 	StartTime time.Time
 	Ownership Ownership
+}
+
+// prettyContext pretty-prints a FUSE context for log output.
+func prettyContext(context *fuse.Context) string {
+	if context == nil {
+		return "nil"
+	}
+	return fmt.Sprintf("Context{Uid: %d, Gid: %d, Pid: %d}", context.Uid, context.Gid, context.Pid)
 }
 
 func (kwfs KeywhizFs) statusJSON() []byte {
@@ -126,6 +135,27 @@ func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, metric
 //
 // name is empty when getting information on the base directory
 func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
+	ret := make(chan struct {
+		*fuse.Attr
+		fuse.Status
+	})
+	go func() {
+		attr, status := kwfs.getAttr(name, context)
+		ret <- struct {
+			*fuse.Attr
+			fuse.Status
+		}{attr, status}
+	}()
+	select {
+	case out := <-ret:
+		return out.Attr, out.Status
+	case <-time.After(fsTimeout):
+		kwfs.Errorf("Operation timed out: GetAttr(%s, %s)", name, prettyContext(context))
+		return nil, fuse.EIO
+	}
+}
+
+func (kwfs KeywhizFs) getAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
 	kwfs.Debugf("GetAttr called with '%v'", name)
 
 	var attr *fuse.Attr
@@ -192,6 +222,27 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 
 // Open is a FUSE function where an in-memory open file struct is constructed.
 func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
+	ret := make(chan struct {
+		nodefs.File
+		fuse.Status
+	})
+	go func() {
+		file, status := kwfs.open(name, flags, context)
+		ret <- struct {
+			nodefs.File
+			fuse.Status
+		}{file, status}
+	}()
+	select {
+	case out := <-ret:
+		return out.File, out.Status
+	case <-time.After(fsTimeout):
+		kwfs.Errorf("Operation timed out: Open(%s, %d, %s)", name, flags, prettyContext(context))
+		return nil, fuse.EIO
+	}
+}
+
+func (kwfs KeywhizFs) open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
 	kwfs.Debugf("Open called with '%v'", name)
 
 	var file nodefs.File
@@ -252,6 +303,27 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 
 // OpenDir is a FUSE function called when performing a directory listing.
 func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse.DirEntry, code fuse.Status) {
+	ret := make(chan struct {
+		Stream []fuse.DirEntry
+		Status fuse.Status
+	})
+	go func() {
+		stream, status := kwfs.openDir(name, context)
+		ret <- struct {
+			Stream []fuse.DirEntry
+			Status fuse.Status
+		}{stream, status}
+	}()
+	select {
+	case out := <-ret:
+		return out.Stream, out.Status
+	case <-time.After(fsTimeout):
+		kwfs.Errorf("Operation timed out: OpenDir(%s, %s)", name, prettyContext(context))
+		return nil, fuse.EIO
+	}
+}
+
+func (kwfs KeywhizFs) openDir(name string, context *fuse.Context) (stream []fuse.DirEntry, code fuse.Status) {
 	kwfs.Debugf("OpenDir called with '%v'", name)
 
 	var entries []fuse.DirEntry
