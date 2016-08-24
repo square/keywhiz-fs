@@ -35,7 +35,6 @@ import (
 
 const (
 	fsVersion  = "2.0"
-	fsTimeout  = 5 * time.Minute
 	fuseEISDIR = fuse.Status(unix.EISDIR)
 )
 
@@ -66,6 +65,7 @@ type KeywhizFs struct {
 	Metrics   *sqmetrics.SquareMetrics
 	StartTime time.Time
 	Ownership Ownership
+	Timeout   time.Duration
 }
 
 // prettyContext pretty-prints a FUSE context for log output.
@@ -125,7 +125,7 @@ func NewKeywhizFs(client *Client, ownership Ownership, timeouts Timeouts, metric
 	defaultfs := pathfs.NewDefaultFileSystem()            // Returns ENOSYS by default
 	readonlyfs := pathfs.NewReadonlyFileSystem(defaultfs) // R/W calls return EPERM
 
-	kwfs = &KeywhizFs{readonlyfs, logger, client, cache, metrics, time.Now(), ownership}
+	kwfs = &KeywhizFs{readonlyfs, logger, client, cache, metrics, time.Now(), ownership, 2 * timeouts.MaxWait}
 	nfs := pathfs.NewPathNodeFs(kwfs, nil)
 	nfs.SetDebug(logConfig.Debug)
 	return kwfs, nfs.Root(), nil
@@ -149,8 +149,9 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	select {
 	case out := <-ret:
 		return out.Attr, out.Status
-	case <-time.After(fsTimeout):
-		kwfs.Errorf("Operation timed out: GetAttr(%s, %s)", name, prettyContext(context))
+	case <-time.After(kwfs.Timeout):
+		kwfs.Errorf("Operation timed out: GetAttr(\"%s\", %s)", name, prettyContext(context))
+		kwfs.logGoroutines()
 		return nil, fuse.EIO
 	}
 }
@@ -236,8 +237,9 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	select {
 	case out := <-ret:
 		return out.File, out.Status
-	case <-time.After(fsTimeout):
-		kwfs.Errorf("Operation timed out: Open(%s, %d, %s)", name, flags, prettyContext(context))
+	case <-time.After(kwfs.Timeout):
+		kwfs.Errorf("Operation timed out: Open(\"%s\", %d, %s)", name, flags, prettyContext(context))
+		kwfs.logGoroutines()
 		return nil, fuse.EIO
 	}
 }
@@ -317,9 +319,25 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 	select {
 	case out := <-ret:
 		return out.Stream, out.Status
-	case <-time.After(fsTimeout):
-		kwfs.Errorf("Operation timed out: OpenDir(%s, %s)", name, prettyContext(context))
+	case <-time.After(kwfs.Timeout):
+		kwfs.Errorf("Operation timed out: OpenDir(\"%s\", %s)", name, prettyContext(context))
+		kwfs.logGoroutines()
 		return nil, fuse.EIO
+	}
+}
+
+func (kwfs KeywhizFs) logGoroutines() {
+	var buffer bytes.Buffer
+	profile := pprof.Lookup("goroutine")
+	if profile == nil {
+		kwfs.Errorf("unable to fetch goroutine profile\n")
+		return
+	}
+	err := profile.WriteTo(&buffer, 1)
+	if err != nil {
+		kwfs.Errorf("failed to write goroutine dump: %s\n", err)
+	} else {
+		kwfs.Errorf("goroutine dump:\n%s\n", string(buffer.Bytes()))
 	}
 }
 
