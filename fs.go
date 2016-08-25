@@ -277,7 +277,7 @@ func (kwfs KeywhizFs) open(name string, flags uint32, context *fuse.Context) (no
 		data, err := kwfs.Client.RawSecret(sname)
 		if err == nil {
 			file = nodefs.NewDataFile(data)
-			kwfs.Infof("Access to %s by uid %d, with gid %d", sname, context.Uid, context.Gid)
+			kwfs.Debugf("Access to %s by uid %d, with gid %d", sname, context.Uid, context.Gid)
 		}
 	case name == ".pprof/heap":
 		file = nodefs.NewDataFile(kwfs.profile("heap"))
@@ -287,7 +287,7 @@ func (kwfs KeywhizFs) open(name string, flags uint32, context *fuse.Context) (no
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
 			file = nodefs.NewDataFile(secret.Content)
-			kwfs.Infof("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
+			kwfs.Debugf("Access to %s by uid %d, with gid %d", name, context.Uid, context.Gid)
 		}
 	}
 
