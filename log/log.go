@@ -19,10 +19,16 @@ import (
 	"log"
 	"log/syslog"
 	"os"
+	"time"
 )
 
-// Default syslog facility which is logged to.
-const _DefaultSyslogFacility = syslog.LOG_USER
+const (
+	// Default syslog facility which is logged to.
+	defaultSyslogFacility = syslog.LOG_USER
+
+	// Maximum backlog of queued messages
+	workQueueMaxBacklog = 25
+)
 
 // Logger maintains state of log emitters for different severity levels.
 type Logger struct {
@@ -31,6 +37,7 @@ type Logger struct {
 	warnLog  *log.Logger
 	infoLog  *log.Logger
 	debugLog *log.Logger
+	queue    chan func()
 	debug    bool
 }
 
@@ -54,59 +61,101 @@ func New(component string, config Config) *Logger {
 	var syslogWriter *syslog.Writer
 	if config.Syslog {
 		var err error
-		syslogWriter, err = syslog.New(syslog.LOG_NOTICE|_DefaultSyslogFacility, name)
+		syslogWriter, err = syslog.New(syslog.LOG_NOTICE|defaultSyslogFacility, name)
 		if err != nil {
 			errorLog.Printf("Error starting syslog logging, continuing: %v\n", err)
 			syslogWriter = nil
 		}
 	}
-	return &Logger{syslogWriter, errorLog, warnLog, infoLog, debugLog, config.Debug}
+
+	queue := make(chan func(), workQueueMaxBacklog)
+	logger := &Logger{syslogWriter, errorLog, warnLog, infoLog, debugLog, queue, config.Debug}
+	go logger.process()
+	return logger
+}
+
+// Enqueue work into logger queue. Best-effort; drops message if queue is full.
+func (l Logger) nonBlockingEnqueue(worker func()) {
+	select {
+	case l.queue <- worker:
+		// queued
+	default:
+		// queue is full; possibly because syslog is stuck.
+		fmt.Fprintf(
+			os.Stderr,
+			"** dropping log message at %s, buffer full (%d queued) **",
+			time.Now().Format(time.UnixDate), len(l.queue))
+	}
+}
+
+// Process work queue. Should run in async goroutine.
+func (l Logger) process() {
+	for {
+		worker, more := <-l.queue
+		if !more {
+			return
+		}
+		worker()
+	}
 }
 
 // Errorf emits messages at ERROR level with a printf style interface.
 func (l Logger) Errorf(format string, v ...interface{}) {
-	msg := fmt.Sprintf(format, v...)
-	if l.syslog != nil {
-		l.syslog.Err(msg)
-	} else {
-		l.errorLog.Println(msg)
+	worker := func() {
+		msg := fmt.Sprintf(format, v...)
+		if l.syslog != nil {
+			l.syslog.Err(msg)
+		} else {
+			l.errorLog.Println(msg)
+		}
 	}
+	l.nonBlockingEnqueue(worker)
 }
 
 // Warnf emits messages at WARN level with a printf style interface.
 func (l Logger) Warnf(format string, v ...interface{}) {
-	msg := fmt.Sprintf(format, v...)
-	if l.syslog != nil {
-		l.syslog.Warning(msg)
-	} else {
-		l.warnLog.Println(msg)
+	worker := func() {
+		msg := fmt.Sprintf(format, v...)
+		if l.syslog != nil {
+			l.syslog.Warning(msg)
+		} else {
+			l.warnLog.Println(msg)
+		}
 	}
+	l.nonBlockingEnqueue(worker)
 }
 
 // Infof emits messages at INFO level with a printf style interface.
 func (l Logger) Infof(format string, v ...interface{}) {
-	msg := fmt.Sprintf(format, v...)
-	if l.syslog != nil {
-		l.syslog.Info(msg)
-	} else {
-		l.infoLog.Println(msg)
+	worker := func() {
+		msg := fmt.Sprintf(format, v...)
+		if l.syslog != nil {
+			l.syslog.Info(msg)
+		} else {
+			l.infoLog.Println(msg)
+		}
 	}
+	l.nonBlockingEnqueue(worker)
 }
 
 // Debugf emits messages at DEBUG level with a printf style interface if debugging was enabled.
 func (l Logger) Debugf(format string, v ...interface{}) {
-	if l.debug {
-		msg := fmt.Sprintf(format, v...)
-		if l.syslog != nil {
-			l.syslog.Debug(msg)
-		} else {
-			l.debugLog.Println(msg)
+	worker := func() {
+		if l.debug {
+			msg := fmt.Sprintf(format, v...)
+			if l.syslog != nil {
+				l.syslog.Debug(msg)
+			} else {
+				l.debugLog.Println(msg)
+			}
 		}
 	}
+	l.nonBlockingEnqueue(worker)
 }
 
 // Close closes any internal writers.
 func (l Logger) Close() error {
+	close(l.queue)
 	if l.syslog != nil {
 		return l.syslog.Close()
 	}
