@@ -110,7 +110,8 @@ func (kwfs KeywhizFs) metricsJSON() []byte {
 
 func (kwfs KeywhizFs) profile(name string) []byte {
 	var b bytes.Buffer
-	err := pprof.Lookup(name).WriteTo(&b, 0)
+	// Set "1" to enable human-readable debug output
+	err := pprof.Lookup(name).WriteTo(&b, 1)
 	if err != nil {
 		kwfs.Warnf("Error writing profile: %v", err)
 	}
@@ -350,6 +351,7 @@ func (kwfs KeywhizFs) openDir(name string, context *fuse.Context) (stream []fuse
 		entries = kwfs.secretsDirListing(
 			fuse.DirEntry{Name: ".clear_cache", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: ".json", Mode: fuse.S_IFDIR},
+			fuse.DirEntry{Name: ".pprof", Mode: fuse.S_IFDIR},
 			fuse.DirEntry{Name: ".running", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: ".version", Mode: fuse.S_IFREG})
 	case ".json":
