@@ -209,6 +209,12 @@ func (kwfs KeywhizFs) getAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	case name == ".pprof/goroutine":
 		size := uint64(len(kwfs.profile("goroutine")))
 		attr = kwfs.fileAttr(size, 0444)
+	case name == ".pprof/threadcreate":
+		size := uint64(len(kwfs.profile("threadcreate")))
+		attr = kwfs.fileAttr(size, 0444)
+	case name == ".pprof/block":
+		size := uint64(len(kwfs.profile("block")))
+		attr = kwfs.fileAttr(size, 0444)
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
@@ -283,6 +289,10 @@ func (kwfs KeywhizFs) open(name string, flags uint32, context *fuse.Context) (no
 		file = nodefs.NewDataFile(kwfs.profile("heap"))
 	case name == ".pprof/goroutine":
 		file = nodefs.NewDataFile(kwfs.profile("goroutine"))
+	case name == ".pprof/threadcreate":
+		file = nodefs.NewDataFile(kwfs.profile("threadcreate"))
+	case name == ".pprof/block":
+		file = nodefs.NewDataFile(kwfs.profile("block"))
 	default:
 		secret, ok := kwfs.Cache.Secret(name)
 		if ok {
@@ -368,6 +378,8 @@ func (kwfs KeywhizFs) openDir(name string, context *fuse.Context) (stream []fuse
 		entries = []fuse.DirEntry{
 			fuse.DirEntry{Name: "heap", Mode: fuse.S_IFREG},
 			fuse.DirEntry{Name: "goroutine", Mode: fuse.S_IFREG},
+			fuse.DirEntry{Name: "threadcreate", Mode: fuse.S_IFREG},
+			fuse.DirEntry{Name: "block", Mode: fuse.S_IFREG},
 		}
 	}
 
