@@ -23,7 +23,9 @@ import (
 	"net/url"
 	"path"
 	"strings"
+	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/rcrowley/go-metrics"
 	"github.com/square/go-sq-metrics"
@@ -87,31 +89,26 @@ func NewClient(certFile, keyFile, caFile string, serverURL *url.URL, timeout tim
 	failCount := metrics.GetOrRegisterCounter("runtime.server.fails", metricsHandle.Registry)
 	lastSuccess := metrics.GetOrRegisterGauge("runtime.server.lastsuccess", metricsHandle.Registry)
 
-	reqc := make(chan *http.Client)
+	var httpClient unsafe.Pointer
 
-	// Getter from channel.
+	// Load HTTP client from atomic pointer
 	getClient := func() *http.Client {
-		client := <-reqc
-		return client
+		return (*http.Client)(atomic.LoadPointer(&httpClient))
 	}
 
 	initial, err := params.buildClient()
 	panicOnError(err)
 
-	// Asynchronously updates client and owns current reference.
+	atomic.StorePointer(&httpClient, unsafe.Pointer(initial))
+
+	// Asynchronously updates client and updates atomic reference
 	go func() {
-		current := initial
-		ticker := time.Tick(clientRefresh)
-		for {
-			select {
-			case t := <-ticker: // Periodically update client.
+		for t := range time.Tick(clientRefresh) {
+			if client, err := params.buildClient(); err == nil {
 				logger.Infof("Updating http client at %v", t)
-				if client, err := params.buildClient(); err != nil {
-					logger.Errorf("Error refreshing http client: %v", err)
-				} else {
-					current = client
-				}
-			case reqc <- current: // Service request for current client.
+				atomic.StorePointer(&httpClient, unsafe.Pointer(client))
+			} else {
+				logger.Errorf("Error refreshing http client: %v", err)
 			}
 		}
 	}()
