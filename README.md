@@ -1,6 +1,6 @@
 # Overview
 
-[![license](https://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/keywhiz-fs/master/LICENSE)
+[![license](https://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/keywhiz-fs/master/LICENSE.txt)
 [![build](https://img.shields.io/travis/square/keywhiz-fs/master.svg?style=flat)](https://travis-ci.org/square/keywhiz-fs)
 [![coverage](https://coveralls.io/repos/github/square/keywhiz-fs/badge.svg?branch=master)](https://coveralls.io/github/square/keywhiz-fs?branch=master)
 
