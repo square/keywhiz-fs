@@ -110,21 +110,51 @@ func TestCachePassesThroughSecretDeleted(t *testing.T) {
 
 	secretFixture, _ := ParseSecret(fixture("secret.json"))
 
+	// 1 hour Fresh timeout is sure to be fresh
+	timeouts := Timeouts{1 * time.Hour, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
 	fake_clock := time.Now()
 	cache := NewCache(DeletedBackend{}, timeouts, logConfig, func() time.Time { return fake_clock })
 	secret, ok := cache.Secret(secretFixture.Name)
 	assert.False(ok)
 	assert.Nil(secret)
 
+	// The cache should save a record of the missing secret
+	assert.Equal(1, cache.Len())
+
+	// The cache should error on a second request for the deleted secret, returning an empty secret
+	secret, ok = cache.Secret(secretFixture.Name)
+	assert.False(ok)
+	assert.Equal(&Secret{}, secret)
+
 	cache.Add(*secretFixture)
 	secret, ok = cache.Secret(secretFixture.Name)
 	assert.True(ok)
 	assert.Equal(secretFixture, secret)
 
-	// After a while, secret should still be there since the backend is failing.
+	// After a while, secret should still be there since the backend is failing and it was added with ttl = 0.
 	fake_clock = fake_clock.Add(2 * time.Hour)
 	_, ok = cache.Secret(secretFixture.Name)
+	assert.True(ok)
+
+	// 1 nanosecond Fresh timeout is sure to be stale
+	timeouts = Timeouts{1 * time.Nanosecond, 10 * time.Millisecond, 20 * time.Millisecond, 1 * time.Hour}
+	fake_clock = time.Now()
+	cache = NewCache(DeletedBackend{}, timeouts, logConfig, func() time.Time { return fake_clock })
+	secret, ok = cache.Secret(secretFixture.Name)
 	assert.False(ok)
+	assert.Nil(secret)
+	assert.Equal(1, cache.Len())
+
+	cache.Add(*secretFixture)
+	secret, ok = cache.Secret(secretFixture.Name)
+	assert.True(ok)
+	assert.Equal(secretFixture, secret)
+
+	// The cache should clear the added secret and save a record of the missing secret
+	fake_clock = fake_clock.Add(2 * time.Hour)
+	secret, ok = cache.Secret(secretFixture.Name)
+	assert.False(ok)
+	assert.Equal(1, cache.Len())
 }
 
 func TestCacheSecretWhenClientTimesOut(t *testing.T) {

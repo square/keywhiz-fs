@@ -83,13 +83,21 @@ func (m *SecretMap) Put(key string, value Secret, updated time.Time) {
 func (m *SecretMap) Delete(key string) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	expire := m.getNow().Add(m.timeouts.DeletionDelay)
+
+	now := m.getNow()
+	expire := now.Add(m.timeouts.DeletionDelay)
 	v, ok := m.m[key]
 	if ok {
 		if v.ttl.IsZero() {
 			v.ttl = expire
 		}
 		m.m[key] = v
+	} else {
+		// Cache the fact that this secret is deleted
+		m.m[key] = SecretTime{
+			Time:    now,
+			ttl:     expire,
+			deleted: true}
 	}
 }
 
