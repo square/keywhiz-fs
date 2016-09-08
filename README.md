@@ -99,7 +99,7 @@ docker build --rm -t square/keywhiz-fs .
 After building, you can run the newly built image by running:
 
 ```
-docker run --device /dev/fuse:/dev/fuse --cap-add=IPC_LOCK --cap-add=SYS_ADMIN keywhizfs --debug --ca=/go/src/github.com/square/keywhiz-fs/fixtures/cacert.crt --key=/go/src/github.com/square/keywhiz-fs/fixtures/client.pem https://localhost:443 /secrets/kwfs
+docker run --device /dev/fuse:/dev/fuse --cap-add MKNOD --cap-add IPC_LOCK --cap-add SYS_ADMIN --security-opt apparmor:unconfined square/keywhiz-fs --debug --ca=/go/src/github.com/square/keywhiz-fs/fixtures/cacert.crt --key=/go/src/github.com/square/keywhiz-fs/fixtures/client.pem https://localhost:443 /secrets/kwfs
 ```
 
 Note that we have to pass `--device /dev/fuse:/dev/fuse` to mount the fuse device into the container, and give `SYS_ADMIN` capabilities to the container, so it can mount fuse-fs filesystems.
