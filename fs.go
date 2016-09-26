@@ -139,8 +139,9 @@ func (kwfs KeywhizFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	ret := make(chan struct {
 		*fuse.Attr
 		fuse.Status
-	})
+	}, 1)
 	go func() {
+		defer close(ret)
 		attr, status := kwfs.getAttr(name, context)
 		ret <- struct {
 			*fuse.Attr
@@ -233,8 +234,9 @@ func (kwfs KeywhizFs) Open(name string, flags uint32, context *fuse.Context) (no
 	ret := make(chan struct {
 		nodefs.File
 		fuse.Status
-	})
+	}, 1)
 	go func() {
+		defer close(ret)
 		file, status := kwfs.open(name, flags, context)
 		ret <- struct {
 			nodefs.File
@@ -319,8 +321,9 @@ func (kwfs KeywhizFs) OpenDir(name string, context *fuse.Context) (stream []fuse
 	ret := make(chan struct {
 		Stream []fuse.DirEntry
 		Status fuse.Status
-	})
+	}, 1)
 	go func() {
+		defer close(ret)
 		stream, status := kwfs.openDir(name, context)
 		ret <- struct {
 			Stream []fuse.DirEntry
