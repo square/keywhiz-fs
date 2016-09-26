@@ -185,7 +185,7 @@ func (c *Cache) cacheSecretList() []Secret {
 // Retrieval is concurrent, so a channel is returned to communicate a successful value.
 // The channel will not be fulfilled on error.
 func (c *Cache) backendSecret(name string) chan secretResult {
-	secretc := make(chan secretResult)
+	secretc := make(chan secretResult, 1)
 	go func() {
 		defer close(secretc)
 		secret, err := c.backend.Secret(name)
