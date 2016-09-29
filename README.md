@@ -30,9 +30,7 @@ KeywhizFs will display all secrets under the top level directory of the mountpoi
 
 Run `make keywhiz-fs` to build a binary and `make test` to run tests.
 
-We use [glide][1] to manage vendored dependencies.
-
-[1]: https://glide.sh
+We use [glide][3] to manage vendored dependencies.
 
 # Running
 
@@ -112,3 +110,4 @@ Please contribute! And, please see CONTRIBUTING.md.
 
 [1]: https://square.github.io/keywhiz
 [2]: http://fuse.sourceforge.net/
+[3]: https://glide.sh
