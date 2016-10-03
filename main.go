@@ -19,6 +19,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -96,9 +97,13 @@ func main() {
 		Options:    []string{"default_permissions"},
 	}
 
+	// Resolve symlink
+	mountpoint_, err := filepath.EvalSymlinks(*mountpoint)
+	panicOnError(err)
+
 	// Empty Options struct avoids setting a global uid/gid override.
 	conn := nodefs.NewFileSystemConnector(root, &nodefs.Options{})
-	server, err := fuse.NewServer(conn.RawFS(), *mountpoint, mountOptions)
+	server, err := fuse.NewServer(conn.RawFS(), mountpoint_, mountOptions)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
 	}
