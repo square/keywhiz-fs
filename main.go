@@ -87,6 +87,7 @@ func main() {
 	kwfs, root, err := NewKeywhizFs(&client, ownership, timeouts, metricsHandle, logConfig)
 	if err != nil {
 		log.Fatalf("KeywhizFs init fail: %v\n", err)
+		os.Exit(1)
 	}
 	kwfs.Cache.Warmup()
 
@@ -101,6 +102,7 @@ func main() {
 	server, err := fuse.NewServer(conn.RawFS(), *mountpoint, mountOptions)
 	if err != nil {
 		log.Fatalf("Mount fail: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Catch SIGINT and exit cleanly.
