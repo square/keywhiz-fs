@@ -1,3 +1,7 @@
+# Status
+
+We plan to deprecate keywhiz-fs shortly.  While this approach has served us well, we've decided the advantages of using FUSE do not outweigh the operational difficulty.  A mostly drop-in replacement is https://github.com/square/keysync
+
 # Overview
 
 [![license](https://img.shields.io/badge/license-apache_2.0-red.svg?style=flat)](https://raw.githubusercontent.com/square/keywhiz-fs/master/LICENSE.txt)
